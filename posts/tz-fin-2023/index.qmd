@@ -1,0 +1,1363 @@
+---
+title: "Geographically Weighted Modeling of Financial Inclusion in Tanzania"
+author: "Federico Jose Rodriguez"
+date: "13-11-2024"
+date-modified: "last-modified"
+categories: [R, Geospatial Analysis, Tanzania]
+image: "TZ-mobile-coeff.jpg"
+execute: 
+  eval: true
+  echo: true
+  message: false
+  freeze: true
+---
+
+This was my final project for the course Geospatial Analysis. Here I looked at the information from FinscopeTanzania 2023 to model measures of financial inclusion both globally and geographically. In this project, I used geographically weighted logistics regression to see how the factors linked to financial inclusion vary across districts.
+
+# A. Getting Started
+
+## A.1 Background
+
+The [World Bank](https://www.worldbank.org/en/topic/financialinclusion/overview) defines **financial inclusion** as the state of having access to useful and affordable financial products to meet one's needs. Financial inclusion is an enabler to 7 of the Sustainable Development Goals, and is seen as the key enabler to reduce extreme poverty.
+
+One key dimension of financial inclusion that the World Bank looked at in their latest [Global Findex Database 2021](https://www.worldbank.org/en/publication/globalfindex) is the ownership of bank accounts for adults. In this report, 76% of the global adult population have their own accounts, but only 71% of the developing nations' do. In some countries like Tanzania this number is even lower at 52%. Banking is just one traditional dimension. Other vehicles like mobile payments can bridge the gap in access to services for some of these nations.
+
+Tanzania recognizes the importance of financial inclusion in promoting economic growth and with the Bank of Tanzania, the country's central bank, the Microfinance Policy of 2000 was developed and focused on expanding financial services for low-income individuals.
+
+The program behind financial inclusion has been structured from 2014 with the first National Financial Inclusion Framework for 2014-2016, with the latest version being the third framework for 2023-2028. While there has been significant progress, (e.g., access to financial services has risen from 42% in 2013 to 89% in 2023) the country continues to aim for inclusion for the whole population by increasing access, encouraging usage and enhancing the quality of financial services.
+
+## A.2 Objectives
+
+Finscope Tanzania 2023 is a public-private sector collaboration and aimed, among others, to understand and describe the financial behavior of individuals in the country and to establish an updated view of the level of financial inclusion across various measures. A large part of the findings is showing the change (improvements) of the overall measures against the previous 2017 report.
+
+The objective of this study is to build on the Finscope Tanzania 2023 by identifying influential variables and identifying if geospatial factors influence the effect of those variables.
+
+In order to satisfy this, the specific deliverables for the study will be:
+
+-   to build a global or non-spatial explanatory model for the level of financial inclusion across Tanzania;
+
+-   to build a geographically weighted explanatory model for the same response variables; and,
+
+-   to assess the advantage of the geographically weighted model and to analyse the geographically weighted model
+
+## A.3 Data Sources
+
+The following data sources are used for this analysis:
+
+-   Finscope Tanzania 2023 individual survey data from [Finscope Tanzania](https://www.fsdt.or.tz/finscope/)
+
+    -   The dataset is contained in a csv and translates the responses from 9,915 individuals who answered the survey
+
+    -   The respondents are all adults aged 16 years and above take across Tanzania
+
+    -   The dataset also includes derived fields which include different indicators for financial inclusion based on different criteria
+
+-   District-level boundaries in Tanzania as a shapefile from [geoBoundaries.org](https://www.geoboundaries.org/) portal
+
+## A.4 Importing and Launching R Packages
+
+For this study, the following R packages will be used. A description of the packages and the code, using `p_load()` of the **pacman** package, to import them is given below.
+
+::: panel-tabset
+#### Package Description
+
+The loaded packages include:
+
+-   **olsrr -** for building OLS (ordinary least squares) regression models and performing diagnostic tests
+
+-   **GWmodel -** for calibrating geographically weighted family of models
+
+-   **tmap -** for plotting cartographic quality maps
+
+-   **ggstatsplot** - for multivariate data visualization and analysis
+
+-   **sf** - spatial data handling
+
+-   **tidyverse** - attribute data handling
+
+#### Import Code
+
+```{r}
+pacman::p_load(olsrr, sf, GWmodel, tmap, tidyverse, ggstatsplot, sfdep)
+```
+:::
+
+# B. Data Loading and Preparation
+
+## B.1 Loading Tanzania District boundaries
+
+We load the district level boundaries in the following code chunk using `st_read()` and indicating the appropriate layer name. (i.e., the level 2 map) We also use `rename()` to already change the `shapeName` field to `district` to make it more understandable. We also project the map onto EPSG 32737 using `st_transform()` in order to be able to reference distances in terms of metres.
+
+```{r}
+tz_dist <- st_read(dsn="data/geospatial", 
+                   layer="geoBoundaries-TZA-ADM2") %>%
+  rename(district = shapeName) %>%
+  st_transform(32737)
+```
+
+```{r}
+tz_dist
+```
+
+The output shows that there are 170 objects loaded which corresponds to individual districts. The object is also of multipolygon class which could indicate that there are districts with discontinuous land areas, like islands.
+
+We can create a simple map to visualize the boundaries using `qtm()` from **tmap**.
+
+```{r}
+tmap_mode("view")
+qtm(tz_dist, text = "district", text.size = 0.4)
+tmap_mode("plot")
+```
+
+## B.2 Deriving District centroids
+
+Before we load the aspatial data, we will process the district boundary map to be able to use it for future operations with the other dataset. One step that needs to be done is to define representative points, which can be the centroids for the boundary map. The primary purpose of this is to be able to map the aspatial data for a district into a single location. In order to do this, the first step is to convert the multipolygon layer object into a polygon object which will allow for proper centroid calculations for each district.
+
+We use the code chunk below to convert the sf object into polygons using `st_cast()` and then create a column for each individual polygon's area using `mutate()` with `st_area()`. We then use `groupby()` to reduce back the object to one row per district and then `filter()` to keep only the largest polygon for each district.
+
+```{r}
+tz_dist_poly <- tz_dist %>%
+  st_cast("POLYGON") %>%
+  mutate(area = st_area(.)) %>%
+  group_by(district) %>%
+  filter(area == max(area)) %>%
+  ungroup() %>%
+  select(-area) %>%
+  select(district)
+```
+
+We can produce a map with tmap package to see if the operation had any irregular effects on the geography. In order to see the difference between the original map and the polygon map, we add the original map as the first layer in red, and then overlay the polygon map. The areas which now appear red are the polygons or areas that have been excluded from the original map to the polygon map.
+
+```{r}
+tm_shape(tz_dist) +
+  tm_polygons("red") +
+tm_shape(tz_dist_poly) +
+  tm_polygons("grey") +
+  tm_layout(title = "Full vs Poly Map",
+            title.position = c("left", "bottom"))
+```
+
+From the output, we see that in addition to a few small islands, there are three inland areas that have been excluded from the original map. While this produces holes in the new map, this might not be a big concern right now as long as the centroids we get from the remaining geometries is meaningful.
+
+In order to generate the centroids, we can now use `st_centroid()` to compute them across each district's largest polygon.
+
+```{r}
+tz_dist_centroids <- st_centroid(tz_dist_poly)
+```
+
+We can check the location of the centroids by plotting them as a layer on top of the original district boundary layer using tmap package in the code below.
+
+```{r}
+tm_shape(tz_dist) +
+  tm_polygons("grey") +
+tm_shape(tz_dist_centroids) +
+  tm_dots("green", size = 0.2) +
+  tm_layout(title = "District Centroids",
+            title.position = c("left", "bottom"))
+```
+
+The centroid locations look mostly acceptable, with a few exceptions where they might be lying somewhere away from the district boundaries given some of the districts have odd, nonconvex shapes.
+
+## B.2 Loading Finscope Tanzania 2023 Respondent Data
+
+We can use `read_csv()` in the code chunk below to load the raw respondent data into an R object.
+
+```{r}
+fstz23 <- read_csv("data/aspatial/FinScope Tanzania 2023_Individual Main Data_FINAL.csv", show_col_types = FALSE)
+```
+
+There are 9915 rows or records, and 721 columns or fields. Most of these columns should not be relevant in meeting our objective, so it is advised to limit the data we work with to those meaningful variable. These variables should be our variable(s) of concern, or the dependent variable(s), and the variables that may contribute to it, or the independent variables.
+
+## B.4 Preparing Finscope Tanzania 2023 Respondent Data
+
+### B.4.1 Selecting potential variables
+
+The first step in preparing the dataset is to reduce the data by keeping only the potentially relevant fields. This means identifying fields that can be used as is or to derive both the response variable(s) and the explanatory variables.
+
+This is performed by scanning the datamap file (i.e., data dictionary) that accompanies the dataset. From there, we decide to keep only the following variables. We also change the variable names to a shorter and more recognizable one.
+
+::: panel-tabset
+#### Financial Inclusion (3)
+
+| Variable Name | Description | New Variable Name |
+|:----------------------:|:----------------------:|:----------------------:|
+| BANKED | Classified as: Banked; Not Banked | fi_banked |
+| OVERALL_FORMAL | Classified as using formal instruments: Yes, No | fi_formal |
+| INFORMAL | Classified as using informal instruments: Yes, No | fi_informal |
+
+#### Geographic (4)
+
+|  Variable   |          Description           | New Variable Name |
+|:-----------:|:------------------------------:|:-----------------:|
+|  reg_name   |          Region name           |      region       |
+|  dist_name  |         District name          |     district      |
+|  ward_name  |           Ward name            |       ward        |
+| clustertype | Indicates if in rural or urban |       urban       |
+
+#### Demographic (11)
+
+| Variable Name | Description | New Variable Name |
+|:----------------------:|:----------------------:|:----------------------:|
+| c8c | Age | age |
+| c9 | Gender: male. or female | female |
+| c10 | Marital status: married, divorced, widowed, single (4 levels) | maritalstatus |
+| c11 | Highest level education (10 levels of values) | education |
+| c2 | Head of household: respondent, not the respondent | head_hh |
+| c8n_a1 | Visually impaired: Yes, No | visual_impaired |
+| c8n_b1 | Hearing impaired: Yes, No | hearing_impaired |
+| c8n_c1 | Communication impaired: Yes, No | comm_impaired |
+| c8n_d1 | Movement impaired: Yes, No | move_impaired |
+| c8n_e1 | Difficulty with daily activities: Yes, No | daily_impaired |
+| c8n_f1 | Difficulty remembering and concentrating: Yes, No | cogn_impaired |
+
+#### Economic (8)
+
+| Variable Name | Description | New Variable Name |
+|:----------------------:|:----------------------:|:----------------------:|
+| c12_1 | Land ownership (6 levels) | land_own |
+| c14 | Family involved in agriculture, fishing or aquaculture: Yes, No | agricultural |
+| c18_2 | Primary source of funds (12 levels) | source_of_funds |
+| c27\_\_17 | Has some form of ID: Yes, No | has_id |
+| D2_1\_\_1 | Receives salary from regular job: Yes, No | reg_job |
+| D2_1\_\_2 | Receives money from selling goods produced: Yes, No | production |
+| D2_1\_\_11 | Does not receive income: Yes, No | no_income |
+| IncomeMain | Derived variable for main source of income (14 levels) | income_source |
+
+#### Technographic (3)
+
+| Variable Name |             Description              | New Variable Name |
+|:-------------:|:------------------------------------:|:-----------------:|
+|   c23\_\_1    |   Access to mobile phone: No, Yes    |      mobile       |
+|   c23\_\_2    |     Access to internet: No, Yes      |     internet      |
+|     c24_1     | Personally own mobile phone: No, Yes |    own_mobile     |
+:::
+
+The code block below compiles the 29 variables and their new names in two separate objects. These will be used in the succeeding steps for data preparation.
+
+```{r}
+colstokeep <- c("reg_name", "dist_name", "ward_name", "clustertype",
+                "c8c", "c9", "c10", "c11", "c2",
+                "c8n_a1", "c8n_b1", "c8n_c1", "c8n_d1", "c8n_e1", "c8n_f1",
+                "c12_1", "c14", "c18_2",
+                "c23__1", "c23__2", "c24_1", "c27__17",
+                "D2_1__1", "D2_1__2", "D2_1__11",
+                "BANKED", "OVERALL_FORMAL", "INFORMAL", "IncomeMain")
+newnames <- c("region", "district", "ward", "urban",
+              "age", "female", "maritalstatus", "education", "head_hh",
+              "visual_impaired", "hearing_impaired", "comm_impaired",
+              "move_impaired", "daily_impaired", "cogn_impaired",
+              "land_own", "agricultural", "source_of_funds",
+              "mobile", "internet", "own_mobile", "has_id",
+              "reg_job", "production", "no_income",
+              "fi_banked", "fi_formal", "fi_informal", "income_source")
+length(colstokeep)
+length(newnames)
+```
+
+We then use the code chunk below to keep the selected variables using `select()` and then to rename the variable or column names using `colnames()`
+
+```{r}
+fstz23_sf <- fstz23 %>%
+  select(all_of(colstokeep))
+
+colnames(fstz23_sf) <- newnames
+```
+
+### B.4.2 Recoding of variables
+
+Recoding of variables is a data preparation step where variable values are replaced by another. This may be done for reasons like cleaning the data or standardising the data. This is generally performed in R using the `recode()` function.
+
+#### B.4.2.1 Recoding of district names
+
+We have district names in the map and in the survey data. As these are two different data sources, there is a chance that they mismatch. We need to ensure that they use the same names as we will use these to add the geographic information to the survey data.
+
+We first check which names in each set do not have a corresponding match in the other. We can do this by performing a left join using `left_join()` and checking which elements do not have matches. We can the use `filter()` to find the records that did not return a valid value from the other dataset. The code chunk performs this left join approach twice as it needs to be checked for direction for each data source, and then we display the district names that are unmatched for each dataset.
+
+```{r}
+mismatched_values <- tz_dist %>%
+  left_join(fstz23_sf, by = "district") %>%
+  filter(is.na(region)) %>%
+  select(district)
+mismatched_tzmap <- mismatched_values$district
+
+mismatched_values <- fstz23_sf %>%
+  left_join(tz_dist, by = "district") %>%
+  filter(is.na(shapeType)) %>%
+  select(district)
+mismatched_fstz23 <- mismatched_values$district
+
+list(
+  mismatched_in_map = mismatched_tzmap,
+  number_mm1 = length(c(mismatched_tzmap)),
+  mismatched_in_survey = unique(mismatched_fstz23),
+  number_mm2 = length(c(unique(mismatched_fstz23)))
+)
+```
+
+The output reveals that there are 34 district names in the boundary map that are not matched, while there are 12 in the survey data that are not matched. We do not need to ensure all 34 in the first dataset is matched as there might really be areas where there are no respondents or residents. We do, however, want almost all, if not all, of the records in the second dataset to be matched as this is where our modeling data sits. It is also worth noting that all the recoding for districts will be done on `fstz23_sf`.
+
+We will perform checks and data cleaning for the 12 unmatched values in `fstz23_sf`, and we will also explore some of the remaining unmatched variables in `tz_dist`. We see that there are values which have "Urban" at the end so there might also be an opportunity to create matches for them.
+
+::: panel-tabset
+##### Tanganyika and Tanga
+
+For unmatched values, there might be differences in spellings between the two sources. While this doesn't guarantee catching misspellings, we can at least check if there are other variables that share the first few letters with the unmatched value.
+
+To find `district` values which contains "Tang" we can use str_detect() on both dataset's columns.
+
+```{r}
+to_find <- "Tanga"
+unique(tz_dist_poly[str_detect(tz_dist_poly$district,to_find),]$district)
+unique(fstz23_sf[str_detect(fstz23_sf$district,to_find),]$district)
+```
+
+There is only one value in `tz_dist` that contains "Tang" but two in `fstz_23`. It should be safe to assume that Tanga and Tanga Urban are one and the same. We can perform the recoding using `recode()` within `mutate()` for the `district` column of `fstz_23`.
+
+```{r}
+fstz23_sf <- mutate(fstz23_sf, district = recode(district,
+                            "Tanga" = "Tanga Urban"))
+```
+
+For Tanganyika, we can use the following code chunk to check how many survey records are affected using `length()`, and then show the wards and regions for the records that do have a district name of Tanganyika.
+
+```{r}
+# Count number of records which has district name Tanganyika
+count(fstz23_sf[str_detect(fstz23_sf$district,"Tanganyika"),])
+# Show regions and wards for records with district name Tanganyika
+unique(select(fstz23_sf[str_detect(fstz23_sf$district,"Tanganyika"),], 
+       c(region, district, ward)))
+       
+```
+
+There are six wards that all reflect the same region name of "Katavi". Upon research, it appears that the Tanganyika district was recently formed and was part of the rural area of the district Mpanda. As such, we will recode Tanganyika to Mpanda using the same approach with
+
+```{r}
+fstz23_sf <- mutate(fstz23_sf, district = recode(district,
+                            "Tanganyika" = "Mpanda"))
+```
+
+##### Magharibi
+
+We saw that there are two districts with the word Magharibi in the `fstz23`, and one in `tz_dist`. We can confirm this by using `str_detect()` to check for all district names containing "Mag" (so we also check some variation in spelling) in both datasets.
+
+```{r}
+to_find <- "Magha"
+unique(tz_dist_poly[str_detect(tz_dist_poly$district,to_find),]$district)
+unique(fstz23_sf[str_detect(fstz23_sf$district,to_find),]$district)
+```
+
+For this case, we drop the B and A by using `recode()` on the district column of `ftsz23_sf`.
+
+```{r}
+fstz23_sf <- mutate(fstz23_sf, district = recode(district,
+                            "Magharibi B" = "Magharibi",
+                            "Magharibi A" = "Magharibi"))
+```
+
+##### Arumeru
+
+We next look into the unmatched district "Arumeru" in `fstz23`. We will use the code chunk below for this district and most of the succeeding ones to check district names that match in both data sets, show the regions and wards in `fstz23` for the district, and the number of records which reflect that district. For these, we continue using `str_detect()` which is included in tidyverse under the `stringr` package in order to find matches of a substring.
+
+```{r}
+to_find <- "Arumeru"
+print("Matches in tz_dist")
+unique(tz_dist_poly[str_detect(tz_dist_poly$district,to_find),]$district)
+print("Matches in ftsz23")
+unique(fstz23_sf[str_detect(fstz23_sf$district,to_find),]$district)
+count(fstz23_sf[str_detect(fstz23_sf$district,to_find),])
+unique(select(fstz23_sf[str_detect(fstz23_sf$district,to_find),], 
+       c(region, district, ward, urban)))
+```
+
+The output shows that there are no districts in `tz_dist` that have a name of Arumeru, but there are 105 in `fstz23`. Upon research, we see that the wards of Arumeru was split between Arusha and Meru. Among the wards in the dataset, the following are now part of Meru: Maroroni, Poli, Maji ya Chai, Nkoaranga. The balance 3 are Arusha: Olmotonyi, Oloirien, Kisongo.
+
+We first update the records for the last three wards to reflect a district name of Arusha using the following code chunk.
+
+```{r}
+fstz23_sf[(fstz23_sf$ward == "Olmotonyi" | fstz23_sf$ward == "Oloirien" | fstz23_sf$ward == "Kisongo"),]$district = "Arusha"
+```
+
+We can then use `recode()` to change the remaining records that are still reflecting "Arumeru" and change them to "Meru"
+
+```{r}
+fstz23_sf <- mutate(fstz23_sf, district = recode(district,
+                            "Arumeru" = "Meru"))
+```
+
+##### Butiama
+
+We execute the same code chunk that makes use of `recode()` to find records where the district name contains "Butiam"
+
+```{r}
+to_find <- "Butiam"
+print("Matches in tz_dist")
+unique(tz_dist_poly[str_detect(tz_dist_poly$district,to_find),]$district)
+print("Matches in ftsz23")
+unique(fstz23_sf[str_detect(fstz23_sf$district,to_find),]$district)
+count(fstz23_sf[str_detect(fstz23_sf$district,to_find),])
+unique(select(fstz23_sf[str_detect(fstz23_sf$district,to_find),], 
+       c(region, district, ward, urban)))
+```
+
+We see that there is only one district from each dataset and it appears that they can only refer to the same district. We then use `recode()` to update "Butiama" to "Butiam"
+
+```{r}
+fstz23_sf <- mutate(fstz23_sf, district = recode(district,
+                            "Butiama" = "Butiam"))
+```
+
+##### Dodoma
+
+We execute the same code chunk that makes use of `recode()` to find records where the district name contains "Dodom"
+
+```{r}
+to_find <- "Dodom"
+print("Matches in tz_dist")
+unique(tz_dist_poly[str_detect(tz_dist_poly$district,to_find),]$district)
+print("Matches in ftsz23")
+unique(fstz23_sf[str_detect(fstz23_sf$district,to_find),]$district)
+count(fstz23_sf[str_detect(fstz23_sf$district,to_find),])
+unique(select(fstz23_sf[str_detect(fstz23_sf$district,to_find),], 
+       c(region, district, ward, urban)))
+```
+
+We again see that there is a one-to-one matching for the sole district on both dataset. We will then update "Dodoma" to "Dodoma Urban" using `recode()` in the chunk below
+
+```{r}
+fstz23_sf <- mutate(fstz23_sf, district = recode(district,
+                            "Dodoma" = "Dodoma Urban"))
+```
+
+##### Kibiti
+
+We execute the same code chunk that makes use of `recode()` to find records where the district name contains "Kibit"
+
+```{r}
+to_find <- "Kibit"
+print("Matches in tz_dist")
+unique(tz_dist_poly[str_detect(tz_dist_poly$district,to_find),]$district)
+print("Matches in ftsz23")
+unique(fstz23_sf[str_detect(fstz23_sf$district,to_find),]$district)
+count(fstz23_sf[str_detect(fstz23_sf$district,to_find),])
+unique(select(fstz23_sf[str_detect(fstz23_sf$district,to_find),], 
+       c(region, district, ward, urban)))
+```
+
+Upon research, it appears that Kibiti is a relatively new district. The two wards that appear under it were actually part of Rufiji district, so we can change "Kibiti" to "Rufiji" using `encode()`
+
+```{r}
+fstz23_sf <- mutate(fstz23_sf, district = recode(district,
+                            "Kibiti" = "Rufiji"))
+```
+
+##### Kigamboni
+
+We execute the same code chunk that makes use of `recode()` to find records where the district name contains "Kigamb"
+
+```{r}
+to_find <- "Kigamb"
+print("Matches in tz_dist")
+unique(tz_dist_poly[str_detect(tz_dist_poly$district,to_find),]$district)
+print("Matches in ftsz23")
+unique(fstz23_sf[str_detect(fstz23_sf$district,to_find),]$district)
+count(fstz23_sf[str_detect(fstz23_sf$district,to_find),])
+unique(select(fstz23_sf[str_detect(fstz23_sf$district,to_find),], 
+       c(region, district, ward, urban)))
+```
+
+There is no indication of the district merging or splitting recently from another, but if we check our map, the region should occupy part of the space which appears as "Temeke". We then recode Kigamboni as Temeke using the following code chunk.
+
+```{r}
+fstz23_sf <- mutate(fstz23_sf, district = recode(district,
+                            "Kigamboni" = "Temeke"))
+```
+
+##### Malinyi
+
+We execute the same code chunk that makes use of `recode()` to find records where the district name contains "Malin"
+
+```{r}
+to_find <- "Malin"
+print("Matches in tz_dist")
+unique(tz_dist_poly[str_detect(tz_dist_poly$district,to_find),]$district)
+print("Matches in ftsz23")
+unique(fstz23_sf[str_detect(fstz23_sf$district,to_find),]$district)
+count(fstz23_sf[str_detect(fstz23_sf$district,to_find),])
+unique(select(fstz23_sf[str_detect(fstz23_sf$district,to_find),], 
+       c(region, district, ward, urban)))
+```
+
+If we check the map, the location of Malinyi falls in the region of Ulanga in our map. We again use `recode()` to change the district names to Ulanga.
+
+```{r}
+fstz23_sf <- mutate(fstz23_sf, district = recode(district,
+                            "Malinyi" = "Ulanga"))
+```
+
+##### Tabora
+
+We execute the same code chunk that makes use of `recode()` to find records where the district name contains "Tabor"
+
+```{r}
+to_find <- "Tabor"
+print("Matches in tz_dist")
+unique(tz_dist_poly[str_detect(tz_dist_poly$district,to_find),]$district)
+print("Matches in ftsz23")
+unique(fstz23_sf[str_detect(fstz23_sf$district,to_find),]$district)
+count(fstz23_sf[str_detect(fstz23_sf$district,to_find),])
+unique(select(fstz23_sf[str_detect(fstz23_sf$district,to_find),], 
+       c(region, district, ward, urban)))
+```
+
+Given that there is only "Tabora Urban" in `tz_dist`, we should be able to update the district names in `fstz23` using this.
+
+```{r}
+fstz23_sf <- mutate(fstz23_sf, district = recode(district,
+                            "Tabora" = "Tabora Urban"))
+```
+
+##### Ubungo
+
+We execute the same code chunk that makes use of `recode()` to find records where the district name contains "Ubung"
+
+```{r}
+to_find <- "Ubung"
+print("Matches in tz_dist")
+unique(tz_dist_poly[str_detect(tz_dist_poly$district,to_find),]$district)
+print("Matches in ftsz23")
+unique(fstz23_sf[str_detect(fstz23_sf$district,to_find),]$district)
+count(fstz23_sf[str_detect(fstz23_sf$district,to_find),])
+unique(select(fstz23_sf[str_detect(fstz23_sf$district,to_find),], 
+       c(region, district, ward, urban)))
+```
+
+Upon checking, the location of Ubungo appears to be within the boundaries of the district Kinondoni in our map. We recode it as such with the following code chunk.
+
+```{r}
+fstz23_sf <- mutate(fstz23_sf, district = recode(district,
+                            "Ubungo" = "Kinondoni"))
+```
+
+##### Select Urban Areas
+
+We have removed all mismatches from `fstz23` but have 28 unmatched district names in `tz_dist`. Among these are a few districts that are suffixed by "Urban"
+
+```{r}
+mismatched_values <- tz_dist %>%
+  left_join(fstz23_sf, by = "district") %>%
+  filter(is.na(region)) %>%
+  select(district)
+mismatch_urban <- mismatched_values[str_detect(mismatched_values$district,"Urban"),]$district
+mismatch_urban
+```
+
+For these, we will assume they refer to the urban region of a given district. For example, Arusha Urban will cover the urban area of the Arusha district. Based on this assumption, we can go through `ftsz23` to check for records for that district and are in the urban area and then map them to the values above. We use a for loop in the code chunk below to find records in `fstz23` that match these conditions and then apply the suffixed district names as replacements. We use the `word()` function from stringr package in order to pick the first word and treat it as the "plain" district name.
+
+```{r}
+for (i in mismatch_urban)
+  {
+    dist = word(i, 1)
+    fstz23_sf[str_detect(fstz23_sf$district,dist) & fstz23_sf$urban == "Urban",]$district = i
+  }
+```
+:::
+
+We can check for the remaining mismatches by rerunning the earlier code.
+
+```{r}
+mismatched_values <- tz_dist %>%
+  left_join(fstz23_sf, by = "district") %>%
+  filter(is.na(region)) %>%
+  select(district)
+mismatched_tzmap <- mismatched_values$district
+
+mismatched_values <- fstz23_sf %>%
+  left_join(tz_dist, by = "district") %>%
+  filter(is.na(shapeType)) %>%
+  select(district)
+mismatched_fstz23 <- mismatched_values$district
+
+list(
+  mismatched_in_map = mismatched_tzmap,
+  number_mm1 = length(c(mismatched_tzmap)),
+  mismatched_in_survey = unique(mismatched_fstz23),
+  number_mm2 = length(c(unique(mismatched_fstz23)))
+)
+```
+
+We were able to remove all mismatches from `fstz23` and then reduce the mismatches from `tz_dist` from 34 to 11. We can visualize the distribution of the (recoded) records in our map by first adding the number of records into the sf object. We use `count()` in the code chunk below to compute for the number of records per district. We then use `left_join()` to merge it with the district map, and replace any zero values (from mismatches) with zero.
+
+```{r}
+tz_dist_stat <- tz_dist %>%
+  left_join(count(fstz23_sf, district), by= "district") %>%
+  rename("orig_records" = "n") %>%
+  replace(is.na(.),0)
+```
+
+We can then use tmap package to plot the distribution of respondents, We first add a layer in grey for the full map and then add a choropleth map for districts with nonzero number of respondents. This will show districts with no respondents as grey.
+
+```{r}
+tm_shape(tz_dist)+
+  tm_polygons("grey") +
+tm_shape(tz_dist_stat[tz_dist_stat$orig_records > 0,]) +
+  tm_polygons("orig_records", title = "Original Records")
+```
+
+The output shows that there are only a few districts that do not have any respondents. Most of the districts have between 0 to 50 respondents. The highest number of respondents in a single district is between 150 and 200.
+
+#### B.4.2.2 Recoding of Modelling Variables
+
+If we look at the data, the modelling variables that we have in fstz23 are mostly categorical. Most of these are binary, but some have more than two values. While we can use categorical variables for EDA, these do not work well once we start modelling. For our case, we will go ahead and convert most of these variables upfront.
+
+We can use the following code chunk which uses the `unique()` function to display the distinct values. We use `lapply()` to run the function on each variable in the dataframe but we exclude the region, district, ward and age as these will either not be part of the modelling, or it is already in numeric form.
+
+```{r}
+lapply(select(fstz23_sf,-c(region, district, ward, age)), unique)
+```
+
+The output reveals that 5 of the variables have more than 2 values or levels, while the balance 20 are binary. We also see that for the `internet` variable there are some records that show NA. We use the code below to check if each of the records have NA for internet by using `is.na()`, and then counting the number of records by just adding up the TRUE values using `sum()`
+
+```{r}
+sum(is.na(fstz23_sf$internet))
+```
+
+As there are only seven with NA values, and there is no sure way of replacing them with the right value, removing them from the dataset should not produce any big issues. We use the code chunk below to remove the na's from the `internet` variable. There are a number of different ways to remove na's, here we just use a mask based on the complement of the results of the `is.na()` function which returns TRUE for any invalid values. We include the count of rows before and after running the code to check that there is a difference of seven rows.
+
+```{r}
+nrow(fstz23_sf)
+fstz23_sf <- fstz23_sf[!is.na(fstz23_sf$internet),]
+nrow(fstz23_sf)
+```
+
+For binary variables, we will use the code below to replace the 'positive' value with 1 and the negative with 0. The values for each variable may vary so we need to apply the recoding individually for these variables.
+
+```{r}
+fstz23_sf <- mutate(fstz23_sf,
+                    urban = recode(urban, "Rural" = 0, "Urban" = 1),
+                    female = recode(female, "Male" = 0, "Female" = 1),
+                    head_hh = recode(head_hh, "Respondent not hhh" = 0, "Respondent is hhh" = 1),
+                    visual_impaired = recode(visual_impaired, "No" = 0, "Yes" = 1),
+                    hearing_impaired = recode(hearing_impaired, "No" = 0, "Yes" = 1),
+                    comm_impaired = recode(comm_impaired, "No" = 0, "Yes" = 1),
+                    move_impaired = recode(move_impaired, "No" = 0, "Yes" = 1),
+                    daily_impaired = recode(daily_impaired, "No" = 0, "Yes" = 1),
+                    cogn_impaired = recode(cogn_impaired, "No" = 0, "Yes" = 1),
+                    agricultural = recode(agricultural, "No" = 0, "Yes" = 1),
+                    mobile = recode(mobile, "No" = 0, "Yes" = 1),
+                    internet = recode(internet, "No" = 0, "Yes" = 1),
+                    own_mobile = recode(own_mobile, "2" = 0, "Yes" = 1),
+                    has_id = recode(has_id, "No" = 0, "Yes" = 1),
+                    reg_job = recode(reg_job, "No" = 0, "Yes" = 1),
+                    production = recode(production, "No" = 0, "Yes" = 1),
+                    no_income = recode(no_income, "No" = 0, "Yes" = 1),
+                    fi_banked = recode(fi_banked, "Not Banked" = 0, "Banked" = 1),
+                    fi_formal = recode(fi_formal, "Not OVERALL_FORMAL" = 0, "OVERALL_FORMAL" = 1),
+                    fi_informal = recode(fi_informal, "Not INFORMAL" = 0,
+                                         "INFORMAL incl SACCO AND CMG RISK CONTRIBUTIONS" = 1))
+```
+
+For the non-binary variables, we start by checking the distribution of the data across their different levels. Where there is a very small amount of data in one category, we will not be too worried merging them with another (logical) one. We use the code chunk below which uses `count()` to give the number of records or rows for each of the values of the indicated column. We then wrap the output in `arrange()` to sort the values in ascending number of records.
+
+::: panel-tabset
+##### Marital Status
+
+```{r}
+arrange(count(fstz23_sf, maritalstatus),n)
+```
+
+##### Education
+
+```{r}
+arrange(count(fstz23_sf, education),n)
+```
+
+##### Land Ownership
+
+```{r}
+arrange(count(fstz23_sf, land_own),n)
+```
+
+##### Source of Funds
+
+```{r}
+arrange(count(fstz23_sf, source_of_funds),n)
+```
+
+##### Primary Source of Income
+
+```{r}
+arrange(count(fstz23_sf, income_source),n)
+```
+:::
+
+The output shows that there is a very large number of NAs in the source of funds. We highlight this using the `is.na()` function in the first code chunk below. As there are more than 40% missing values, and the `income_source` variable may already be holding the similar, but more complete, information, we will go ahead and drop the variable by using the `select()` function in the second code chunk.
+
+```{r}
+sum(is.na(fstz23_sf$source_of_funds))
+```
+
+```{r}
+fstz23_sf <- select(fstz23_sf, -c(source_of_funds))
+```
+
+While we will be preforming a separate EDA for the variables, we will already create binary variables for certain levels of the remaining categorical variables. Common practice is to produce n-1 dummy variable for a variable with n-levels, however, we will opt to consolidate some of the variables together where it makes sense. For martial status, we can keep three levels. The first variable denotes whether the respondent is currently married, the second variable will be whether the respondent is widowed, separated or divorced. Single respondents should reflect a value of zero for both of the variables. For the code chunks, we use `as.integer()` to convert the logical outputs into zeros and ones.
+
+```{r}
+fstz23_sf$is_married <- as.integer(fstz23_sf$maritalstatus == "Married/living together")
+fstz23_sf$was_married <- as.integer(fstz23_sf$maritalstatus == "Widowed" | fstz23_sf$maritalstatus == "Divorced/separated")
+```
+
+For education, we will keep four levels for primary, secondary and tertiary or higher education. (with the fourth level denoting that the respondent has not completed primary)
+
+```{r}
+fstz23_sf$educ_primary <- as.integer(fstz23_sf$education == "Primary completed" | fstz23_sf$education == "Some secondary" | fstz23_sf$education == "Post primary technical training")
+fstz23_sf$educ_secondary <- as.integer(fstz23_sf$education == "Secondary competed-O level" | fstz23_sf$education == "Secondary completed-A level" | fstz23_sf$education == "Some University or other higher education")
+fstz23_sf$educ_tertiary <- as.integer(fstz23_sf$education == "University or higher education completed")
+```
+
+For land ownership, we define start with four levels to denote whether the respondent personally owns the land, the land is owned by family or shared with someone, the land is rented, or the land is neither owned nor rented.
+
+```{r}
+fstz23_sf$land_self_own <- as.integer(fstz23_sf$land_own == "You personally own the land/plot where you live")
+fstz23_sf$land_hh_or_shared <- as.integer(fstz23_sf$land_own == "You own the land/plot together with someone else" | fstz23_sf$land_own == "Other A household members owns the land/plot")
+fstz23_sf$land_rented <- as.integer(fstz23_sf$land_own == "The land/plot is rented")
+```
+
+For sources of income, we see that the largest group is "Farmers and Fishers" (3232), "Piece-work or Casual Labor" (2559) and "Dependents" (1960). We will keep these three as distinct levels. We can then define traders (861), salaried (635) and all other sources excuding welfare, gambling, pension, and service providers. We will take service providers to be very similar to casual labor as it also counts as an irregular source of funds.
+
+```{r}
+fstz23_sf$income_farm_and_fish <- as.integer(fstz23_sf$income_source == "Farmers and fishers")
+fstz23_sf$income_piecework <- as.integer(fstz23_sf$income_source == "Piece work/casual labor" | fstz23_sf$income_source == "Service providers")
+fstz23_sf$income_dependent <- as.integer(fstz23_sf$income_source == "Dependents")
+fstz23_sf$income_trader <- as.integer(fstz23_sf$income_source == "Traders - non-agricultural" | fstz23_sf$income_source == "Traders - agricultural products")
+fstz23_sf$income_salaried <- as.integer(fstz23_sf$income_source == "Formal sector salaried" | fstz23_sf$income_source == "Informal sector salaried")
+fstz23_sf$income_other <- as.integer(fstz23_sf$income_source == "Other" | fstz23_sf$income_source == "Rental income" | fstz23_sf$income_source == "Interest from savings, investments, stocks, unit trusts etc.")
+
+```
+
+These recoded variables will now be used for model calibrations instead of the original variables.
+
+### B.4.3 Creation of overall measures
+
+There are currently three different variables for financial inclusion looking at three different dimensions of financial inclusion. We can create an overall financial inclusion variable to indicate if the respondent is included in any of the three different dimensions of FI.
+
+We use the following code to create a new variable which returns 1 if any of the three variables is 1, otherwise it returns zero. As the three original variables are in zero and one, we can use the logical or operator (`|`) to implement this operation. We then use `as.integer()` to convert the result from logical to a zero-one integer.
+
+```{r}
+fstz23_sf$fi_overall <- as.integer(fstz23_sf$fi_banked | fstz23_sf$fi_formal | fstz23_sf$fi_informal)
+
+```
+
+We can also do the same for the different categories of physical impairment and create a single variable that combines it all.
+
+```{r}
+fstz23_sf$any_impaired <- as.integer(fstz23_sf$visual_impaired | fstz23_sf$hearing_impaired | fstz23_sf$comm_impaired |
+                                       fstz23_sf$move_impaired | fstz23_sf$daily_impaired)
+```
+
+### B.4.4 Converting `fstz23_sf` into an sf dataframe
+
+The object `fstz23_sf` still does not include any geospatial information and cannot be used later for geographically weighted modelling. To solve this, we can use the district centroids as the point location of the respondents. We first use `left_join()` to import the point geometry of the centroids, and then we use `st_as_sf()` in order to make sure that the new object is recognized as an sf dataframe.
+
+```{r}
+fstz23_sf <- left_join(fstz23_sf, tz_dist_centroids, by = "district") %>%
+  st_as_sf()
+```
+
+We can check if the geometries are properly mapped by plotting the respondents onto the boundary map using **tmap** package.
+
+```{r}
+tm_shape(tz_dist) +
+  tm_polygons("grey") +
+tm_shape(fstz23_sf) +
+  tm_dots("blue", size = 0.2) +
+  tm_layout(title = "Respondents",
+            title.position = c("left", "bottom"))
+```
+
+The respondents appear to be properly mapped to the district centroids, however, duplicate locations will be unacceptable for the methods we will use for geographically weighted modelling later. To solver this, we can slightly shift the points by introducing st_jitter(). For the `amount` argument, we use a value of 1000 which means that points will be shifted by up to 1km from their original point. This 1km should not be an issue and will not cause points to go beyond the district boundary.
+
+```{r}
+fstz23_sf <- st_jitter(fstz23_sf, 1000)
+```
+
+We can doublecheck that the operation is successful and there are no duplicated locations by using `duplicated()` to check if a value is duplicated and then using `any()` to check if the function returned true for any value.
+
+```{r}
+any(duplicated(fstz23_sf$geometry))
+```
+
+The code hase returned FALSE so we are assured that there are no duplicated point locations.
+
+# C. Exploratory Data Analysis
+
+Before calibrating the model, we will run use visualization and statistical techniques to go through the potential modeling variables to try to extract some more insights.
+
+## C.1 Respondent Age
+
+The `age` variable in the survey data is the only numeric variable retained. We can use the following code to produce a histogram to show the distribution of values of this variable. We use **ggplot** package to produce the chart, but we include the central measures– the mean, median, mode, as captions for additional insights.
+
+```{r}
+ggplot(fstz23_sf, aes(x = age)) +
+  geom_histogram(binwidth = 5, fill = "#4A90E2", color = "black") +
+  labs(title = "Age Distribution of Respondents",
+       x = "Respondent Age",
+       y = "Number of Respondents",
+       caption = paste("Mean =", round(mean(fstz23_sf$age, na.rm = TRUE), 1), 
+                       ", Median =", round(median(fstz23_sf$age, na.rm = TRUE), 1), 
+                       ", Mode =", as.numeric(names(sort(table(fstz23_sf$age), decreasing = TRUE)[1])))) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 10)
+  )
+
+```
+
+We can also display the summary statistics using the `summary()` function.
+
+```{r}
+summary(fstz23_sf$age)
+```
+
+The outputs show that the ages range from 16 to 100 and is right skewed. The distribution has a mean of \~40yrs and a mode of 30 yrs. Given the shape of the distribution, we can consider scaled versions of the variable when we calibrate the model later.
+
+## C.2 Financial Inclusion Measures
+
+We currently have four variables that give an indication of whether the respondent is financially included. For this study, we want to limit to one, or at most two variables. We expect that some of the variables are highly correlated, while some will perform much better in a model than others.
+
+We first check the overall distribution or proportion of respondents across these four measures. We use **ggplot** package to create a bar chart to show the proportion of respondents achieving financial inclusion based on each dimension. The first part of the code computes for the proportion numbers as plotting the data directly will result in counts rather than percentages.
+
+```{r}
+# Calculate the proportions for each variable
+proportions <-  st_drop_geometry(fstz23_sf) %>%
+  summarise(
+    fi_banked = mean(fi_banked, na.rm = TRUE) * 100,
+    fi_formal = mean(fi_formal, na.rm = TRUE) * 100,
+    fi_informal = mean(fi_informal, na.rm = TRUE) * 100,
+    fi_overall = mean(fi_overall, na.rm = TRUE) * 100
+  )
+
+# Convert the proportions to a long format for ggplot2
+proportions_long <- proportions %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "value")
+
+# Create the bar chart
+ggplot(proportions_long, aes(x = variable, y = value, fill = variable)) +
+  geom_bar(stat = "identity", color = "black") +
+  geom_text(aes(label = round(value, 1)), vjust = -0.5, size = 4) +
+  scale_y_continuous(labels = scales::percent_format(scale = 1)) +
+  labs(title = "Proportion of Respondents for Financial Inclusion Variables",
+       x = "",
+       y = "Percentage",
+       fill = "Variable") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    legend.position = "none"
+  )
+
+```
+
+The output shows that only 20.5% of the respondents are banked, the lowest across the three main dimensions. It also shows that the difference between formal and overall financial inclusion is a difference of 7%. This means that only 7% of respondents are banked or using informal FI instruments, but are not using formal instruments.
+
+We can visualize the correlation based on overlapping values across the three dimensions. Visually, overlaps can be visualized using Venn diagrams, but we can also use an upset chart from UpSetR package. This visualization is more scalable than venn diagrams, which is not really an issue since we only have three categories. This chart makes it much easier to compare intersections and non-intersections against each other.
+
+In the code chunk below, we load the **UpSetR** package, and then prepare the data so that we only have the three variables. The preparation ensures that the variables are in 0-1 integers which is the required format for the function. We then use `upset()` from **UpSetR** package to produce the chart by passing the data and defining the variables to be plotted.
+
+```{r}
+library(UpSetR)
+
+# Create a binary dataframe
+overlap_data <- as.data.frame(st_drop_geometry(fstz23_sf)) %>%
+  mutate(
+    Banked = as.integer(fi_banked == 1),
+    Formal = as.integer(fi_formal == 1),
+    Informal = as.integer(fi_informal == 1)
+  ) %>%
+  select(Banked, Formal, Informal)
+
+# Create the UpSet plot
+upset(overlap_data, sets = c("Banked", "Formal", "Informal"),
+      keep.order = TRUE, order.by = "freq", number.angles = 45,
+      main.bar.color = "blue", sets.bar.color = "red",
+      text.scale = c(1.5, 1.5, 1.5, 1, 1.5, 1.5),
+      mainbar.y.label = "Intersection Size", sets.x.label = "Set Size")
+
+```
+
+The resulting chart shows that:
+
+1.  All banked respondents are also financial included based on formal instruments. (bank is a subset or category under formal instruments)
+2.  There are 663 respondents (\~7%) that are financially included based on informal instruments, but not based on formal instruments
+3.  There are 2812 respondents (\~28%) that are financially included based on formal instruments, but not based on informal instruments
+4.  There are 3836 respondents (\~38%) that are financially included based on both formal and informal instruments
+
+We do not have enough to already exclude any of these variables, but we expect that the overall measure covers too much of the sample to be predictable. We also expect that the informal FI measure has too much overlap with formal so we would likely choose one but not the other.
+
+## C.3 Correlation of predictors
+
+We can check if any of the predictors are highly correlated as the precence of autocorrelation affects the performance and interpretation of the model.
+
+We can do this by producing the correlation plot of the potential predictor variables. We use `ggcorrmat()` of **ggstatsplot** package to produce this. We pass a dataframe with just the predictor variables and the code will output a diagonal matrix with the correlation coeficients between each pair of variables.
+
+```{r fig.width=15, fig.height=15}
+ggcorrmat(select(st_drop_geometry(fstz23_sf),
+                 -c(region, district, ward, maritalstatus, education, land_own, income_source,
+                    fi_banked, fi_formal, fi_informal, fi_overall)))
+```
+
+The code outputs a large matrix, but we only need to focus on pairs where the correlation coefficient is high. (i.e., \> 0.8) Those are:
+
+-   `age` and `age_standardized` = 1 - This is expected as one is just a transformation. We will keep them both for now as we want to see which one will result to a better model.
+
+-   `any_impaired` and `visual_impaired` = 0.81 - This is also expected as `any_impaired` is a derived variable. It looks like most of the impairment reported is visual in nature. We will then drop the derived variable
+
+-   `income_salaried` and `reg_job` = 0.95 - This appears to be redundant variables and likely refer to the same condition. We should be able to drop the latter
+
+-   `production` and `income_farm_and_fish` = 0.71 - while not as high as the last pair, this pair most likely also refers to the same type of work. We will follow the same approach so we only keep the variables prefixed by income in the calibration
+
+Based on those, we can clean up our dataset by dropping the three variables mentioned above. We can also drop the variables we don't need which include the categorical variables that we already have created new variables for. We perform this with the use of the `select()` function and using a "-" to exclude rather than select columns.
+
+```{r}
+fstz23_sf <- select(fstz23_sf,-c(any_impaired, reg_job, production,
+                                 maritalstatus, education, land_own, income_source))
+```
+
+# D. Global (NonSpatial) FI Model
+
+Before we calibrate a geographically weighted model, we first calibrate a global model or models that do not take the geographic locations into account.
+
+## D.1 Global Models without Variable Selection
+
+To calibrate the model, we use `glm()` which calibrates generalised linear models. As the dependent variable is binary, we need to make sure that the model used is a logistic regression model. This is done by passing the value "binomial" to the `family` argument.
+
+We will run this with all variables for all four FI measures to see if any of them are performing very well or very poorly against the others. We will then focus on finetuning and then preparing the geographically weighted models on those variables that can be best explained with this approach.
+
+### D.1.1 Global Model for Formal FI (no variable selection)
+
+The code below calibrates a model with all variables with fi_formal as the dependent variable. We then use `summary()` to output the results. While the results display the AIC as a measure, we also compute for the reduction in variance due to the predictors. This is done by comparing the deviance and the null deviance. A higher number means that the variables had a larger contribution in predicting or explaining the value of the dependent variable.
+
+```{r}
+fi_formal.lr <- glm(fi_formal ~ urban + age + female + head_hh + visual_impaired + hearing_impaired + comm_impaired +
+                      move_impaired + daily_impaired + cogn_impaired + agricultural + mobile + internet +
+                      own_mobile + has_id + no_income + is_married + was_married+
+                      educ_primary + educ_secondary + educ_tertiary +
+                      land_self_own + land_hh_or_shared + land_rented +
+                      income_farm_and_fish + income_piecework + income_dependent + income_trader + income_salaried +
+                      income_other,
+                    family = "binomial",
+                    data = fstz23_sf)
+summary(fi_formal.lr)
+1 - summary(fi_formal.lr)$deviance / summary(fi_formal.lr)$null.deviance 
+```
+
+### D.1.2 Global Model for Banked FI (no variable selection)
+
+The code below calibrates a model with all variables with fi_banked as the dependent variable.
+
+```{r}
+fi_banked.lr <- glm(fi_banked ~ urban + age + female + head_hh + visual_impaired + hearing_impaired + comm_impaired +
+                      move_impaired + daily_impaired + cogn_impaired + agricultural + mobile + internet +
+                      own_mobile + has_id + no_income + is_married + was_married+
+                      educ_primary + educ_secondary + educ_tertiary +
+                      land_self_own + land_hh_or_shared + land_rented +
+                      income_farm_and_fish + income_piecework + income_dependent + income_trader + income_salaried +
+                      income_other,
+                    family = "binomial",
+                    data = fstz23_sf)
+summary(fi_banked.lr)
+1 - summary(fi_banked.lr)$deviance / summary(fi_banked.lr)$null.deviance 
+```
+
+### D.1.3 Global Model for Informal FI (no variable selection)
+
+The code below calibrates a model with all variables with fi_informal as the dependent variable.
+
+```{r}
+fi_informal.lr <- glm(fi_informal ~ urban + age + female + head_hh + visual_impaired + hearing_impaired + comm_impaired +
+                      move_impaired + daily_impaired + cogn_impaired + agricultural + mobile + internet +
+                      own_mobile + has_id + no_income + is_married + was_married+
+                      educ_primary + educ_secondary + educ_tertiary +
+                      land_self_own + land_hh_or_shared + land_rented +
+                      income_farm_and_fish + income_piecework + income_dependent + income_trader + income_salaried +
+                      income_other,
+                    family = "binomial",
+                    data = fstz23_sf)
+summary(fi_informal.lr)
+1 - summary(fi_informal.lr)$deviance / summary(fi_informal.lr)$null.deviance 
+```
+
+### D.1.4 Global Model for Overall FI (no variable selection)
+
+The code below calibrates a model with all variables with fi_overall as the dependent variable.
+
+```{r}
+fi_overall.lr <- glm(fi_overall ~ urban + age + female + head_hh + visual_impaired + hearing_impaired + comm_impaired +
+                      move_impaired + daily_impaired + cogn_impaired + agricultural + mobile + internet +
+                      own_mobile + has_id + no_income + is_married + was_married+
+                      educ_primary + educ_secondary + educ_tertiary +
+                      land_self_own + land_hh_or_shared + land_rented +
+                      income_farm_and_fish + income_piecework + income_dependent + income_trader + income_salaried +
+                      income_other,
+                    family = "binomial",
+                    data = fstz23_sf)
+summary(fi_overall.lr)
+1 - summary(fi_overall.lr)$deviance / summary(fi_overall.lr)$null.deviance
+```
+
+### D.1.5 Choosing a dependent variable based on global model calibration
+
+The different models showed that the one using `fi_formal` and `fi_overall` as the dependent variable performed better than the other two. Since fi_formal gave the best reduction in deviance, and we have seen earlier that the other fi measures overlap with `fi_formal` anyway, we will focus on `fi_formal` as the main indicator for which we will finetune the model.
+
+## D.2 Variable selection for the global model
+
+From the model results, we see that not all the variables contribute in the same degree as the others. We can use the output to pick the significant variables or perform a technique like forward, backward or stepwise regression to select variables by introducing or removing them one at a time.
+
+Forward regression can be done using `ols_step_forward_p()` of the **olsrr** package. The function takes in the full model and starts from an empty model and adds variables with the highest significance one at a time. This continues doing this as long as variables with significance less than the specified p-value can be added.
+
+```{r}
+fi_formal_fw_mlr <- ols_step_forward_p(fi_formal.lr, p_val = 0.05, details = FALSE)
+```
+
+We can also display the results by calling the resulting object.
+
+```{r}
+fi_formal_fw_mlr
+```
+
+The results show that the global model for `fi_formal` includes 12 explanatory variables which consist of variables for:
+
+-   Mobile phone usage and ownership and internet access (3 variables) - has the highest combined weight
+
+-   Education (3 variables)
+
+-   Other positive coefficient: urban, age, trader, head_hh
+
+-   Negative coefficients: no source of income, no id
+
+The last variable is surprising as it implies that having an id is linked to a lower probability of being financially included. The model did not pick up gender which means that it doesn't see a clear distinction between males and females for this dimension of financial inclusion.
+
+## D.3 Testing for spatial autocorrelation
+
+Before calibrating the geographically weighted model, we can check if there is a pattern linking global model performance and the respondent's location. One way to do this is to plot the residuals or error and check for any patterns.
+
+The first step is to export relevant output from the model as a dataframe. We just extract the residuals by referencing the `model` object in the results.
+
+```{r}
+mlr_output <- as.data.frame(fi_formal_fw_mlr$model$residuals) %>%
+  rename('FW_MLR_RES' = 'fi_formal_fw_mlr$model$residuals')
+```
+
+We then import these into `fstz23_sf` as a new variable MLR_RES using `cbind()`. This function adds the dataframe as new columns in their current order.
+
+```{r}
+fstz23_sf <- cbind(fstz23_sf,
+                         mlr_output$FW_MLR_RES) %>%
+  rename('MLR_RES' = 'mlr_output.FW_MLR_RES')
+```
+
+We remember that our respondent data only have the district s their location so dissplaying them as points might not be very meaningful or accurate. We can instead plot the residuals at a district level to see if there are any patterns arising from there.
+
+To do this, we first compute for the average residual at a district level by using `group_by()` to summarise the object by district and then define the aggregate function using `summarise()`. We use `st_drop_geometry()` so that the geometry column is dropped and we only have the district name and the average residual value.
+
+```{r}
+avg_res_df <- st_drop_geometry(fstz23_sf) %>%
+  group_by(district) %>%
+  summarise(avg_res = mean(MLR_RES, na.rm = TRUE))
+
+head(avg_res_df)
+```
+
+We then export these average residual values into the TZ boundary map by using `left_join()` on the district name.
+
+```{r}
+tz_dist_stat <- tz_dist_stat %>%
+  left_join(avg_res_df, by= "district")
+```
+
+We can now use tmap package to visually display the average residual value per district. We again use two layers, and then exclude any districts where there is no residuals by using a mask with `!is.na()`
+
+```{r}
+tm_shape(tz_dist)+
+  tm_polygons("grey") +
+tm_shape(tz_dist_stat[!is.na(tz_dist_stat$avg_res),]) +
+  tm_polygons("avg_res", title = "Average Residuals")
+```
+
+The map shows some apparent clusters with positive (average) residuals and some with negative residuals. A large number of districts have relatively low average residuals between -0.1 and 0.1.
+
+We can confirm this observation by running global Moran's I test on the average residual value. In order to do this, we first need to compute for the neighbors and the weights for each of the district. We use `st_knn()` to derive neighbors using knn method with a parameter of 6 neighbors, and then use equal weights for neighbors using the `st_weights()` function. We perform these functions on the centroids object as these methods work on points rather than shapes.
+
+```{r}
+tz_dist_centroids <- tz_dist_centroids %>%
+  mutate(nb = st_knn(geometry, k = 6,
+                     longlat = FALSE),
+         wt = st_weights(nb,
+                         style = "W"),
+         .before = 1)
+```
+
+We then run the Moran's I test with permutations using `global_moran_perm()` from sfdep package. Note that we use the avg_res from the map object but have kept the neighbor list and weights in the centrodis object. The nsim argument indicates that we are running 10 simulations for this test. We also replace any na values with zero as the code will not work with any na values.
+
+```{r}
+set.seed(1234)
+global_moran_perm(replace_na(tz_dist_stat$avg_res,0),
+                  tz_dist_centroids$nb,
+                  tz_dist_centroids$wt,
+                  alternative = "two.sided",
+                  nsim = 99)
+```
+
+As the results are significant, the test confirms that there is spatial autocorrelation for the average residual values across districts. The positive test statistic confirms our observation that the pattern is that of clustering. We should then build geographically weighted models as they are likely to produce better results as we account for the respondents' locations.
+
+# E. Geographically Weighted FI Model
+
+## E.1 Computing a bandwidth
+
+The first step in calibrating a geographically weighted model is determining the bandwidth to use. The choice can either be a fixed bandwidth which is based on distance, or an adaptive bandwidth which is based on the number of neighbors. For our case, we will opt for a fixed bandwidth since we have not precisely mapped the locations of the respondents, and there is a wide range of values for the number of respondents per district. A fixed bandwidth is likely to ensure that it captures most, if not all, of the points in the same district and also some in neighboring districts.
+
+To compute for the optimum fixed bandwidth, we use `bw.ggwr()` of GWModel package. The `approach` argument defines the stopping rule to be used, which is cross validation in this case. Setting the `adaptive` argument to FALSE indicates that we are computing for the fixed bandwidth. Like the global model, we indicate binomial for the family argument to specify we are calibrating a logistic regression model.
+
+The first part of the function is the formula for the model. To be sure of the details to put in here, one may use the `formula()` function on the model object of the forward regression output to display the final formula.
+
+```{r eval=FALSE}
+bw_fixed <- bw.ggwr(formula = fi_formal ~ own_mobile + has_id + urban + mobile + internet +
+                     no_income + educ_secondary + educ_primary + educ_tertiary +
+                     age + income_trader + head_hh,
+                  data = fstz23_sf,
+                  family = "binomial",
+                  approach = "CV",
+                  kernel = "gaussian",
+                  adaptive = FALSE,
+                  longlat = FALSE)
+
+# To display the global model's formula, you may use
+# formula(fi_formal_fw_mlr$model)
+```
+
+The output shows a recommended bandwidth of \~99.5km should be used. We save the output as an rds object to save our results and prevent the need to rerun the code again.
+
+```{r eval=FALSE}
+write_rds(bw_fixed, "data/rds/bw_fixed.rds")
+```
+
+```{r echo=FALSE}
+bw_fixed <- read_rds("data/rds/bw_fixed.rds")
+```
+
+## E.2 Deriving the distance matrix
+
+Calibration of the logistics regression model requires a properly set up distance matrix. We use the code below which computes for this using `gw.dist()` on the coordinates of the data points. The coordinates function does not work on an sf dataframe so we convert it into Spatial format first.
+
+```{r}
+distMAT <- gw.dist(dp.locat=
+                     coordinates(as_Spatial(fstz23_sf)))
+```
+
+## E.3 Calibrating the fixed bandwidth model
+
+We can now calibrate the geographically weighted model using the computed bandwidthby using `ggwr.basic()` from GWModel. The function uses mostly the same arguments as the previous one, with the exception that the bandwidth now becomes an input here.
+
+```{r eval=FALSE}
+gwr_fixed <- ggwr.basic(formula = fi_formal ~ own_mobile + has_id + urban + mobile + internet +
+                     no_income + educ_secondary + educ_primary + educ_tertiary +
+                     age + income_trader + head_hh,
+                     data = fstz23_sf,
+                     family = "binomial",
+                     kernel = "gaussian",
+                     bw = bw_fixed,
+                     adaptive = FALSE,
+                     longlat = FALSE,
+                     dMat = distMAT)
+```
+
+We again save this object into an rds file to save our work for future runs.
+
+```{r eval=FALSE}
+write_rds(gwr_fixed, "data/rds/gwr_fixed.rds")
+```
+
+```{r echo=FALSE}
+gwr_fixed <- read_rds("data/rds/gwr_fixed.rds")
+```
+
+We can show the results by calling the object as in the code chunk below.
+
+```{r}
+gwr_fixed
+```
+
+The output shows an improvement with the gleographically weighted model across the different performance measures. AICc improved from 7627.7 to 7558.832. The pseudo R-squared value improved from 0.31359 to 0.3583282.
+
+The output also shows that the coefficient values vary widely across the local models. For some variables, there is also a change in sign across those value ranges– which implies that for some variables like mobile and internet access, they are detrimental to the respondent's level of financial inclusion depending on their location.
+
+We can analyze the gwr model further by accessing the details in the output.
+
+## E.4 Importing gwr model results into an sf dataframe
+
+The gwr output includes details for every local model in an object called `SDF`. We can combine this with the geospatial information in order to be able to visualize the values of coefficients, residuals and fit measures at an individual location level. We use the following code chunk to extract `SDF` as a dataframe and then combine it with with `fstz23_sf` using `cbind()`. The code only retains the district names and the gwr model output by using `select()` to specify those columns.
+
+```{r}
+gwr_fixed_output <- as.data.frame(gwr_fixed$SDF) %>%
+  select(-c(geometry))
+
+gwr_sf_fixed <- cbind(fstz23_sf, gwr_fixed_output) %>%
+  select(2, (ncol(fstz23_sf)):(ncol(fstz23_sf)+ncol(gwr_fixed_output))) %>%
+  st_drop_geometry()
+```
+
+As the local models might not be relevant on their own, we can summarize all of the model values by district and then visualize these variables by district rather than by individual data point. We use the following code chunk to compute for the average of each of the variables by district name using the following code chunk. The code uses `group_by()` to aggregate by district. Columns with the mean for each variable are then added by using `across()` and `everything()` to compute the mean for each variable.
+
+```{r}
+gwr_sf_fixed_by_dist <- gwr_sf_fixed %>%
+  group_by(district) %>%
+  summarise(across(everything(), ~ mean(.x, na.rm = TRUE)))
+```
+
+We then import to the district boundary map using left_join`()` on `district`.
+
+```{r}
+tz_dist_stat <- tz_dist_stat %>%
+  left_join(gwr_sf_fixed_by_dist, by= "district")
+```
+
+## E.5 Visualizing model coefficients and metrics
+
+We can visualize the patterns in the model coefficients or of other metrics with the updated sf dataframe.
+
+### E.5.1 Visualizing model coefficients
+
+For model coefficients, we focus on the following that have a wide range of values: `has_id`, `mobile`, `internet`, `no_income`, education (all levels), `head_hh`.
+
+::: panel-tabset
+#### With ID
+
+The code chunk below produces a choropleth map for the average coefficient of `has_id` in each district.
+
+```{r}
+tm_shape(tz_dist)+
+  tm_polygons("grey") +
+tm_shape(tz_dist_stat[!is.na(tz_dist_stat$has_id.1),]) +
+  tm_polygons("has_id.1", title = "ß has_id")
+```
+
+The chart shows that the coefficient of `has_id` is negative across most of Tanzania. There are only a few districts where it is positive. This result seems surprising as ID's may be treated as a way of getting access to financial services. There is likely more to this and the absence of an ID for some of the respondents might be link to another condition which is not appearing here. (e.g., those on welfare that do not have access to banking might all have IDs)
+
+#### Mobile Access
+
+The code chunk below produces a choropleth map for the average coefficient of `mobile` in each district. We highlight districts with negative (average) coefficients with a red border.
+
+```{r}
+tm_shape(tz_dist)+
+  tm_polygons("grey") +
+tm_shape(tz_dist_stat[!is.na(tz_dist_stat$mobile.1),]) +
+  tm_polygons("mobile.1", title = "ß mobile") +
+tm_shape(tz_dist_stat[(!is.na(tz_dist_stat$mobile.1) & (tz_dist_stat$mobile.1) < 0),]) +
+  tm_borders("red")
+```
+
+The output shows increased incidence of financial inclusion for respondents with access to a mobile phone. However, there is a cluster of districts on the northeast and another on the west that shows a negative correlation between mobile phone access and financial inclusion. This needs to be investigated as access is linked to access to mobile banking. These clusters might have low adoption, or limited access to such services which might be causing the results to appear as such.
+
+#### Internet Access
+
+The code chunk below produces a choropleth map for the average coefficient of `internet` in each district. We highlight districts with negative (average) coefficients with a red border.
+
+```{r}
+tm_shape(tz_dist)+
+  tm_polygons("grey") +
+tm_shape(tz_dist_stat[!is.na(tz_dist_stat$internet.1),]) +
+  tm_polygons("internet.1", title = "ß internet") +
+tm_shape(tz_dist_stat[(!is.na(tz_dist_stat$internet.1) & (tz_dist_stat$internet.1) < 0),]) +
+  tm_borders("red")
+```
+
+We see a similar state as mobile access. In general, probability of being financially included with internet access, but for some regions, this is not the case. There is a cluster in the north and in the west-southwest that are showing a negative correlation between financial inclusion and internet access. These also appear to be different regions districts compared to the ones for mobiel access. This needs to be investigated as to why internet access is not bringing higher levels of financial inclusion to these districts.
+
+#### Lack of income sources
+
+The code chunk below produces a choropleth map for the average coefficient of `no_income` in each district.
+
+```{r}
+tm_shape(tz_dist)+
+  tm_polygons("grey") +
+tm_shape(tz_dist_stat[!is.na(tz_dist_stat$no_income.1),]) +
+  tm_polygons("no_income.1", title = "ß no_income") +
+tm_shape(tz_dist_stat[(!is.na(tz_dist_stat$no_income.1) & (tz_dist_stat$no_income.1) > 0),]) +
+  tm_borders("darkgreen")
+```
+
+With the exception of a cluster of five districts in the centre of Tanzania, the lack of a source of income, unsurprisingly, relates to higher probability of not being financially included. What we want to focus on are districts where the impact is higher. There is a cluster in the southwest, another in the north that appear to be more impacted. These might indicate more vulnerable populations-- either a high degree of unemployment, or a much lower level (quality) of welfare or government support compared to the rest of the country.
+
+#### Education
+
+The code chunk below produces a row of three choropleth maps for the average coefficient of each of the three education variables in each district. Each variable's map is created using tmap and then stored in an object which are then displayed in a row using `tmap_arrange()`.
+
+```{r fig.width=15}
+prim <- tm_shape(tz_dist)+
+  tm_polygons("grey") +
+tm_shape(tz_dist_stat[!is.na(tz_dist_stat$educ_primary.1),]) +
+  tm_polygons("educ_primary.1", title = "ß educ_primary", palette = "Greens")
+
+sec <- tm_shape(tz_dist)+
+  tm_polygons("grey") +
+tm_shape(tz_dist_stat[!is.na(tz_dist_stat$educ_secondary.1),]) +
+  tm_polygons("educ_secondary.1", title = "ß educ_secondary", palette = "Greens")
+
+ter <- tm_shape(tz_dist)+
+  tm_polygons("grey") +
+tm_shape(tz_dist_stat[!is.na(tz_dist_stat$educ_tertiary.1),]) +
+  tm_polygons("educ_tertiary.1", title = "ß educ_tertiary", palette = "Greens")
+
+tmap_arrange(prim, sec, ter, ncol = 3)
+
+```
+
+The output shows that education increases the chances of being financially included. The degree of impact also increases, generally, by the level of education.
+
+#### Heads of household
+
+The code chunk below produces a choropleth map for the average coefficient of `head_hh` in each district. We highlight districts with negative (average) coefficients with a red border.
+
+```{r}
+tm_shape(tz_dist)+
+  tm_polygons("grey") +
+tm_shape(tz_dist_stat[!is.na(tz_dist_stat$head_hh.1),]) +
+  tm_polygons("head_hh.1", title = "ß head_hh") +
+tm_shape(tz_dist_stat[(!is.na(tz_dist_stat$head_hh.1) & (tz_dist_stat$head_hh.1) < 0),]) +
+  tm_borders("red")
+```
+
+For most of the districts, it appears that the head of the household is more likely to be financially included (compared to non-heads of household) However, there are districts which are showing a negative coefficient. While there may be valid reasons for this (e.g., the head of household just stays home and might not be active in managing the funds) the aim is to make sure that no resident is excluded. Further investigation is needed if this can and needs to be addressed.
+:::
+
+### E.5.2 Visualizing model residuals
+
+We can also visualize the model residuals using the same approach. We can use the following code chunk to display the avrage residuals beside the level of financial inclusion in the district (which is simply the proportion of the indivudals that are financially included) to see if there is any pattern in the residuals and if they are related to the level of FI in a district.
+
+```{r fig.width=10}
+y <- tm_shape(tz_dist)+
+  tm_polygons("grey") +
+tm_shape(tz_dist_stat[!is.na(tz_dist_stat$y),]) +
+  tm_polygons("y", title = "Formal FI", palette="-viridis") +
+tm_shape(tz_dist_stat[!is.na(tz_dist_stat$y) & tz_dist_stat$y < 0.4,]) +
+  tm_text("district")
+
+res <- tm_shape(tz_dist)+
+  tm_polygons("grey") +
+tm_shape(tz_dist_stat[!is.na(tz_dist_stat$residual),]) +
+  tm_polygons("residual", title = "Residual")
+
+tmap_arrange(y, res, ncol = 2)
+
+```
+
+The output shows that most of the districts that have the most negative residuals also are the ones that have low financial inclusion. (50% and below) This may indicate that the calibrated model, which was based on the global calibration, is not as appropriate for them. There may be other factors that explain the level of financial inclusion in these districts.
+
+# F. Conclusion and Recommendations
+
+Through this study we were able to show that the effect of various factors on the level of financial inclusion in Tanzania is a function of the individuals location. The key factors identified include mobile access, internet access, ID ownership, education, access to income, and being the head of the household. Some of the variables have an inverse relationship to the level fo financial inclusion when viewed in one district vs another. These include mobile and internet access. Further investigation is recommended to see why access to such technology appears detrimental to some districts. There may be issues like the adoption of the the financial services using these technologies, the quality of such services in these districts, or other issues that the country would want to address. We have also observed that the calibrated model's performance appears to be poorer in districts with low incidence of financial inclusion. A dedicated study on those districts or region may be undertaken to understand any other factors that might be driving the lower level of financial inclusion in those districts.
