@@ -1,7 +1,7 @@
 ---
 title: "Geographically Weighted Modeling of Financial Inclusion in Tanzania"
-author: "Federico Jose Rodriguez"
-date: "13-11-2024"
+author: "Derek Rodriguez"
+date: "2024-11-13"
 date-modified: "last-modified"
 categories: [R, Geospatial Analysis, Tanzania]
 image: "TZ-mobile-coeff.jpg"
