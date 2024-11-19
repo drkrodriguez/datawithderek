@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.5.56">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Derek Rodriguez">
+<meta name="dcterms.date" content="2024-11-19">
+
+<title>Analysing Card Choices with Frequent Pattern Mining – data with derek</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script><script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<script src="../../site_libs/quarto-html/quarto.js"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-dark.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="dark">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="../../styles.css">
+</head>
+
+<body class="nav-fixed fullcontent">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top quarto-banner">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">data with derek</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/drkrodriguez/datawithderek"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://www.linkedin.com/in/fjsrodriguez/"> <i class="bi bi-linkedin" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">Analysing Card Choices with Frequent Pattern Mining</h1>
+                                <div class="quarto-categories">
+                <div class="quarto-category">Python</div>
+                <div class="quarto-category">Pattern Mining</div>
+                <div class="quarto-category">Market Basket Analysis</div>
+                <div class="quarto-category">Web Scraping</div>
+                <div class="quarto-category">MTG</div>
+              </div>
+                  </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      <div>
+      <div class="quarto-title-meta-heading">Author</div>
+      <div class="quarto-title-meta-contents">
+               <p>Derek Rodriguez </p>
+            </div>
+    </div>
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">November 19, 2024</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+
+<p>In this post, I use frequent pattern mining or association rule mining, which is typically used for market basket analysis, in order to analyze card choices in more than a thousand user-uploaded decks. I will be using Python’s <strong>requests</strong>, <strong>beautifulsoup4</strong>, <strong>mtg_parser</strong>, and <strong>mlxtend</strong> packages to perform the main activities.</p>
+<p>We’ve learned association rule mining in multiple courses in MITB (Customer Analytics, Data Science for Business) primarily for Market Basket Analysis. The same technique should be applicable outside retail, where the questions can be addressed by find highly correlated items or sets of items.</p>
+<section id="introduction" class="level1">
+<h1>Introduction</h1>
+<p>For those unaware, <a href="https://magic.wizards.com/en">Magic the Gathering</a> (MTG) is a trading card game that was first introduced in 1993, and I have been playing it (casually) since 1995. There are a number of formats, or ways to play, in this game, but the most popular for a number of years now is <a href="https://magic.wizards.com/en/formats/commander">Commander</a>. The format requires each player to build a deck of 100 cards which is helmed by, and built around a “commander”.</p>
+<p>The most popular commander for the past two years, based on the site <a href="https://edhrec.com/commanders">EDHREC.com</a>, as of writing is Atraxa, Praetors’ Voice. EDHREC already provides an analysis of typical decklists in their site for <a href="https://edhrec.com/commanders/atraxa-praetors-voice">Atraxa</a> and other commanders, but I want to see if I can do my own simple analysis using Python.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://cards.scryfall.io/normal/front/d/0/d0d33d52-3d28-4635-b985-51e126289259.jpg?1599707796" class="img-fluid quarto-figure quarto-figure-center figure-img" style="width:40.0%"></p>
+</figure>
+</div>
+<p>At the minimum, I want to be able to find the typical cards that users include in the deck and see if I can use the techniques to identify different themes or builds and find any interesting card choices.</p>
+</section>
+<section id="getting-the-decklists-from-mtg-goldfish-results-pages" class="level1">
+<h1>Getting the Decklists from MTG Goldfish Results pages</h1>
+<p>To perform any analysis, we need to get data, and for this one, we need data on individual decks for Atraxa. There are individual decklists uploaded in <a href="https://www.mtggoldfish.com/">MTG Goldfish</a> which we should be able to use. The only thing is that these lists are not contained in a single file, but are stored in separate pages– so the data needs to be scraped of the web.</p>
+<p>For this task, we will first us the Python <a href="https://pypi.org/project/requests/">Requests</a> package is a package for doing HTTP requests and is the “basic” package for web scraping. A request for a webpage is sent via the <code>get()</code> function which returns a Response object.</p>
+<p>In the code chunk below, we pass the link to the search results page into <code>get()</code> and then check whether the request was successful. (based on a <code>status_code</code> value of 200) The webpage, or its source code, will be accessible via the <code>text</code> object in the response.</p>
+<div id="a464363c" class="cell" data-execution_count="1">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> requests</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Define the URL for the search results</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>url <span class="op">=</span> <span class="st">'https://www.mtggoldfish.com/deck_searches/create?commit=Search&amp;counter=3&amp;deck_search%5Bdate_range%5D=01</span><span class="sc">%2F</span><span class="st">01</span><span class="sc">%2F</span><span class="st">2022+-+11</span><span class="sc">%2F</span><span class="st">15</span><span class="sc">%2F</span><span class="st">2024&amp;deck_search%5Bdeck_search_card_filters_attributes%5D%5B0%5D%5Bcard%5D=Atraxa%2C+Praetors%27+Voice&amp;deck_search%5Bdeck_search_card_filters_attributes%5D%5B0%5D%5Bquantity%5D=1&amp;deck_search%5Bdeck_search_card_filters_attributes%5D%5B0%5D%5Btype%5D=commander&amp;deck_search%5Bdeck_search_card_filters_attributes%5D%5B1%5D%5Bcard%5D=&amp;deck_search%5Bdeck_search_card_filters_attributes%5D%5B1%5D%5Bquantity%5D=1&amp;deck_search%5Bdeck_search_card_filters_attributes%5D%5B1%5D%5Btype%5D=maindeck&amp;deck_search%5Bdeck_search_card_filters_attributes%5D%5B2%5D%5Bcard%5D=&amp;deck_search%5Bdeck_search_card_filters_attributes%5D%5B2%5D%5Bquantity%5D=1&amp;deck_search%5Bdeck_search_card_filters_attributes%5D%5B2%5D%5Btype%5D=maindeck&amp;deck_search%5Bformat%5D=&amp;deck_search%5Bname%5D=&amp;deck_search%5Bplayer%5D=&amp;deck_search%5Btypes%5D%5B%5D=&amp;deck_search%5Btypes%5D%5B%5D=tournament&amp;deck_search%5Btypes%5D%5B%5D=user&amp;page=1&amp;utf8=</span><span class="sc">%E</span><span class="st">2%9C%93'</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Make an HTTP GET request to fetch the webpage content</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>response <span class="op">=</span> requests.get(url)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Check if the request was successful</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> response.status_code <span class="op">==</span> <span class="dv">200</span>:</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    webpage <span class="op">=</span> response.text</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"Page fetched successfully!"</span>)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="cf">else</span>:</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"Failed to fetch the page:"</span>, response.status_code)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Page fetched successfully!</code></pre>
+</div>
+</div>
+<p>For web scraping, <a href="https://www.crummy.com/software/BeautifulSoup/bs4/doc/">Beautiful Soup</a> is helpful in navigating pulled webpages. Aside from being able to show the code in a more readable format, it is very useful in finding tags in the code which is what we will use it for here.</p>
+<p>We first import the package, specifically the <code>BeautifulSoup()</code> function, and use it to convert the webpage results into a BeautifulSoup object.</p>
+<div id="c985ab80" class="cell" data-execution_count="2">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> bs4 <span class="im">import</span> BeautifulSoup</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Parse the HTML content</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>soup <span class="op">=</span> BeautifulSoup(webpage, <span class="st">'html.parser'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We then need to inspect the code to identify what it is that we need to get from the webpage. In our case we see that the decklist URL is stored within items tagged ‘a’ within ones tagged as ‘td’.</p>
+<p>We test this using the code chunk below. Note that the decklist URL is actually just the suffix of the URL and not the whole URL.</p>
+<div id="30169f64" class="cell" data-execution_count="3">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> soup.find_all(<span class="st">'td'</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>td_elements <span class="op">=</span> soup.find_all(<span class="st">'td'</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>hrefs <span class="op">=</span> []</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> td <span class="kw">in</span> td_elements:</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  a_tag <span class="op">=</span> td.find(<span class="st">'a'</span>)</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> a_tag:</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    hrefs.append(a_tag[<span class="st">'href'</span>])</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(hrefs)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>As the approach was successful, we modify the preceding chunks of code to go through all 67 results pages to do the page request and then extracting the decklist URLs.</p>
+<div id="4c16abb8" class="cell" data-execution_count="4">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create the template url</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>urlstart <span class="op">=</span> <span class="st">'https://www.mtggoldfish.com/deck_searches/create?commit=Search&amp;counter=3&amp;deck_search%5Bdate_range%5D=01</span><span class="sc">%2F</span><span class="st">01</span><span class="sc">%2F</span><span class="st">2022+-+11</span><span class="sc">%2F</span><span class="st">15</span><span class="sc">%2F</span><span class="st">2024&amp;deck_search%5Bdeck_search_card_filters_attributes%5D%5B0%5D%5Bcard%5D=Atraxa%2C+Praetors%27+Voice&amp;deck_search%5Bdeck_search_card_filters_attributes%5D%5B0%5D%5Bquantity%5D=1&amp;deck_search%5Bdeck_search_card_filters_attributes%5D%5B0%5D%5Btype%5D=commander&amp;deck_search%5Bdeck_search_card_filters_attributes%5D%5B1%5D%5Bcard%5D=&amp;deck_search%5Bdeck_search_card_filters_attributes%5D%5B1%5D%5Bquantity%5D=1&amp;deck_search%5Bdeck_search_card_filters_attributes%5D%5B1%5D%5Btype%5D=maindeck&amp;deck_search%5Bdeck_search_card_filters_attributes%5D%5B2%5D%5Bcard%5D=&amp;deck_search%5Bdeck_search_card_filters_attributes%5D%5B2%5D%5Bquantity%5D=1&amp;deck_search%5Bdeck_search_card_filters_attributes%5D%5B2%5D%5Btype%5D=maindeck&amp;deck_search%5Bformat%5D=&amp;deck_search%5Bname%5D=&amp;deck_search%5Bplayer%5D=&amp;deck_search%5Btypes%5D%5B%5D=&amp;deck_search%5Btypes%5D%5B%5D=tournament&amp;deck_search%5Btypes%5D%5B%5D=user&amp;page='</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>urlend <span class="op">=</span> <span class="st">'&amp;utf8=</span><span class="sc">%E</span><span class="st">2%9C%93'</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>hrefs <span class="op">=</span> []</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">1</span>,<span class="dv">68</span>):</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  url <span class="op">=</span> urlstart <span class="op">+</span> <span class="bu">str</span>(i) <span class="op">+</span> urlend</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>  response <span class="op">=</span> requests.get(url)</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> response.status_code <span class="op">==</span> <span class="dv">200</span>:</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>      webpage <span class="op">=</span> response.text</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>  <span class="cf">else</span>:</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>      <span class="bu">print</span>(<span class="st">"Failed to fetch the page"</span>, i, <span class="st">":"</span>, response.status_code)</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>  soup <span class="op">=</span> BeautifulSoup(webpage, <span class="st">'html.parser'</span>)</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>  td_elements <span class="op">=</span> soup.find_all(<span class="st">'td'</span>)</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> td <span class="kw">in</span> td_elements:</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>    a_tag <span class="op">=</span> td.find(<span class="st">'a'</span>)</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>      <span class="cf">if</span> a_tag:</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>        hrefs.append(a_tag[<span class="st">'href'</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="14208e36" class="cell" data-execution_count="6">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="bu">len</span>(hrefs)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="4">
+<pre><code>2136</code></pre>
+</div>
+</div>
+<p>We were able to get 2136 URL (suffixes) from the 67 search result pages. The next step is to extract the individual decklists from each of these URLs.</p>
+<section id="using-mtg-parser-as-a-structured-way-of-pulling-mtg-decklists" class="level2">
+<h2 class="anchored" data-anchor-id="using-mtg-parser-as-a-structured-way-of-pulling-mtg-decklists">Using MTG Parser as a structured way of pulling MTG decklists</h2>
+<p>I found a package called <a href="https://pypi.org/project/mtg_parser/">mtg_parser</a> for easily scraping MTG decklists off popular webpages. Their function <code>parse_deck()</code> retuns an iterable containing items of a custom class card which includes the quantity and the name of each card in a decklist.</p>
+<p>The code chunk below loads the package, and then iterates through the list of deck suffixes generated earlier and passes them into <code>parse_deck()</code>. We include error handling using <code>try-except</code> as we are not sure whether each link is still live or contains a readable decklist. There are also multiple ways the link can be built. (either with or without <em>#paper</em>) The result is initially stored as a nested list containing the deck numbers and the card names.</p>
+<div id="3bd712c6" class="cell" data-execution_count="8">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> mtg_parser</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>decklist <span class="op">=</span> []</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>fail_count <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> suffix <span class="kw">in</span> hrefs:</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    deck <span class="op">=</span> suffix[<span class="op">-</span><span class="dv">7</span>:]</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">try</span>:</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">try</span>:</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>            url <span class="op">=</span> <span class="st">'https://www.mtggoldfish.com/deck/'</span> <span class="op">+</span> <span class="bu">str</span>(deck) <span class="op">+</span> <span class="st">'#paper'</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>            cards <span class="op">=</span> mtg_parser.parse_deck(url)</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>            <span class="cf">for</span> card <span class="kw">in</span> cards:</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>              decklist.append([deck, card.name])</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>        <span class="cf">except</span>:</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>            url <span class="op">=</span> <span class="st">'https://www.mtggoldfish.com/deck/'</span> <span class="op">+</span> <span class="bu">str</span>(deck)</span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>            cards <span class="op">=</span> mtg_parser.parse_deck(url)</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>            <span class="cf">for</span> card <span class="kw">in</span> cards:</span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>              decklist.append([deck, card.name])</span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">except</span>:</span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>        <span class="bu">print</span>(<span class="st">'Failed for deck'</span>, deck)</span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>        fail_count <span class="op">+=</span> <span class="dv">1</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We included a counter to already check how many decks (deck links) didn’t work with this method, and it appears that out of the 2136 decks, 5 failed so we still have a good amount of 2131 decks to work with.</p>
+<p>Also note that the last code chunk takes very long to execute as the request is done for each of the 2136 decklist pages. I have saved the results in a file so I don’t need to run the code again once I restart the Python session.</p>
+<p>We then convert the resulting list object into a dataframe which will be easier to work with. This is done simply using the <strong>pandas</strong> package and its <code>DataFrame()</code> function which converts some collections, like a list or dictionary, into a dataframe. We pass the appropriate variable names in the columns agreement that indicate the first element as the deck (denoted by the link suffix) and the card name.</p>
+<div id="256a1bc9" class="cell" data-execution_count="10">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>columns <span class="op">=</span> [<span class="st">"deck"</span>, <span class="st">"card"</span>]</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>decklist <span class="op">=</span> pd.DataFrame(decklist, columns <span class="op">=</span> columns)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="7ab51e57" class="cell" data-execution_count="11">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>decklist.head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="6">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">deck</th>
+<th data-quarto-table-cell-role="th">card</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>6755629</td>
+<td>Atraxa, Praetors' Voice</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>6755629</td>
+<td>Birds of Paradise</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>6755629</td>
+<td>Deathrite Shaman</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>6755629</td>
+<td>Delighted Halfling</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>6755629</td>
+<td>Esper Sentinel</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="a-brief-introduction-of-market-basket-analysis-and-association-rule-mining" class="level1">
+<h1>A Brief Introduction of Market Basket Analysis and Association Rule Mining</h1>
+<p>Market Basket Analysis is a technique that retailers or marketers use to understand buying patterns of customers by looking at items that are frequently bought together. When applied in retail, insights from Market Basket Analysis can lead to help suggest better placement of products, or opportunities to bundle or cross-sell products.</p>
+<p>Market basket analysis is typically done by Frequent Pattern or Association Rule Mining. The general idea is that we are interested in finding items that are typically purchased together, or that appear together in a ‘market basket’. It is called Association Rule Mining since it looks for interesting or frequent (based on a predefined threshold) rules, which are in the form:</p>
+<p><span class="math display">\[
+A \Rightarrow B
+\]</span></p>
+<p>This simply means that if a basket contains A, then it contains B. A and B can be single or multiple items.</p>
+<p>There are three basic measures that will be relevant in association rules mining:</p>
+<ol type="1">
+<li><p><strong>Support</strong> - This is a measure of how often a set of items occurs. It may be denoted as the number of times the set is observed, but is typically represented as a proportion or a probability.</p></li>
+<li><p><strong>Confidence</strong> - This is computed per association rule as the support for the rule divided by the support for the <em>antecedent</em>, or the left side of the rule. (the right side is called the <em>consequent</em>) For the association rule <span class="math inline">\(A \Rightarrow B\)</span>, the confidence will then be <span class="math inline">\(Support(A,B) / Support(A)\)</span> This can be interpreted as the probability of B appearing in a basket, if A is in the basket.</p></li>
+<li><p><strong>Lift</strong> - This is the confidence of the rule divided by the support of the consequent. This then translates to <span class="math inline">\(Lift(A \Rightarrow B) = Confidence(A \Rightarrow B)/Suppport(A) = Support(A,B) / Support(A) Support(B)\)</span> Lift is a measure of how likely the antecedent is to occur with the antecedent, than in general or than expected. Lift can be viewed as the strength of the rule.</p></li>
+</ol>
+<p>Market basket analysis is typically interested with rules that have high enough support (occurs often enough) and high enough confidence (have high association) and a lift of at least 1. (occur more often with the antecedent than without)</p>
+<p>There is a lot of material available online and on print on this topic, but what we have covered should be enough to support the use of the technique for our objective.</p>
+</section>
+<section id="applying-association-rule-mining-to-the-atraxa-decklists" class="level1">
+<h1>Applying Association Rule Mining to the Atraxa Decklists</h1>
+<p>So how can Association Rule Mining be used in analyzing decklists? There are a few things that it should be able to provide insights on based on the information we have. We will be using the <a href="https://rasbt.github.io/mlxtend/api_subpackages/mlxtend.frequent_patterns/"><strong>frequent_patterns</strong></a> subpackage within <strong>mlextend</strong> which gives access to two useful functions for MBA or Association Rules Mining: <code>apriori()</code> and <code>association_rules()</code>.</p>
+<p>We first need to transform the data into the correct format, before running the apriori algorithm and then analyzing the results.</p>
+<section id="identifying-staples" class="level2">
+<h2 class="anchored" data-anchor-id="identifying-staples">Identifying Staples</h2>
+<p>While it is tempting to use the algorithm for association rules mining right away, it will take too long to run it on the whole dataset that we have. (I tried, but I gave up after more than 12 hours) We can have an idea of how much effort will be required to run the algorithm by checking the size of the dataset. We use <code>nunique()</code> to count the unique values for each of the two columns in <code>decklist</code>.</p>
+<div id="c27c720e" class="cell" data-execution_count="12">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>decklist[<span class="st">"deck"</span>].nunique()</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>decklist[<span class="st">"card"</span>].nunique()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="7">
+<pre><code>6804</code></pre>
+</div>
+</div>
+<p>Untouched, this would mean converting this first into a 2131 x 6804 dataframe. The number of itemsets can also be very high as the cap will be <span class="math inline">\(2^n\)</span> where <span class="math inline">\(n\)</span> is the number of unique cards. We can use standard <strong>pandas</strong> functions to identify very frequent cards and very infrequent cards– which are not necessary for our other questions about the Atraxa decks.</p>
+<section id="which-cards-appear-in-most-of-the-submitted-decks" class="level3">
+<h3 class="anchored" data-anchor-id="which-cards-appear-in-most-of-the-submitted-decks">Which cards appear in most of the submitted decks?</h3>
+<p>We can count the number of times each card appears in a deck by using <code>value_counts()</code>. We add a new column to indicate the percentage of the 2136 decks that contain that card.</p>
+<div id="71e54072" class="cell" data-execution_count="13">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>card_counts <span class="op">=</span> decklist[<span class="st">'card'</span>].value_counts().reset_index()</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>card_counts.columns <span class="op">=</span> [<span class="st">'card'</span>, <span class="st">'count'</span>]</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>card_counts <span class="op">=</span> card_counts.sort_values(by<span class="op">=</span><span class="st">'count'</span>, ascending<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>card_counts[<span class="st">'pct'</span>] <span class="op">=</span> <span class="bu">round</span>(card_counts[<span class="st">'count'</span>] <span class="op">/</span> <span class="dv">2136</span> <span class="op">*</span> <span class="dv">100</span>, <span class="dv">1</span>)</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>card_counts.head(<span class="dv">10</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="8">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">card</th>
+<th data-quarto-table-cell-role="th">count</th>
+<th data-quarto-table-cell-role="th">pct</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>Atraxa, Praetors' Voice</td>
+<td>2134</td>
+<td>99.9</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>Forest</td>
+<td>1963</td>
+<td>91.9</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>Island</td>
+<td>1962</td>
+<td>91.9</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>Plains</td>
+<td>1943</td>
+<td>91.0</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>Swamp</td>
+<td>1937</td>
+<td>90.7</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">5</td>
+<td>Command Tower</td>
+<td>1888</td>
+<td>88.4</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">6</td>
+<td>Sol Ring</td>
+<td>1786</td>
+<td>83.6</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">7</td>
+<td>Arcane Signet</td>
+<td>1583</td>
+<td>74.1</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">8</td>
+<td>Exotic Orchard</td>
+<td>1307</td>
+<td>61.2</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">9</td>
+<td>Evolution Sage</td>
+<td>1301</td>
+<td>60.9</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>The output shows that there are (only) five cards that appear in at least 90% of decks– Atraxa, and the four basic lands. (which are typical ‘energy’ sources for the game) There are only three that appear in 70-80% of decks and these are cards that appear in almost every deck in the format. The #9 card, <em>Evolution Sage</em> is very specific to decks of this strategy, but it only appears in 61% of decks.</p>
+<p>Let’s check out the next 10 elements of the list with the following code.</p>
+<div id="940671fb" class="cell" data-execution_count="14">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(card_counts.iloc[<span class="dv">10</span>:<span class="dv">20</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                    card  count   pct
+10        Karn's Bastion   1218  57.0
+11  Swords to Plowshares   1147  53.7
+12     Astral Cornucopia   1130  52.9
+13     Tezzeret's Gambit   1122  52.5
+14         Thrummingbird   1104  51.7
+15     Chromatic Lantern   1096  51.3
+16             Cultivate   1057  49.5
+17       Inexorable Tide   1010  47.3
+18               Farseek    999  46.8
+19         Temple Garden    932  43.6</code></pre>
+</div>
+</div>
+<p>The next ten cards include cards specific to this deck’s strategy (e.g., <em>Karn’s Bastion</em>) but also contains generic cards (e..g, <em>Swords to Plowshares</em>) or land cards. (e.g., <em>Temple Garden</em>) The frequency is getting quite low as the last four cards appear in less than half of the submitted decks.</p>
+</section>
+<section id="how-many-cards-appear-in-only-a-handful-of-decks" class="level3">
+<h3 class="anchored" data-anchor-id="how-many-cards-appear-in-only-a-handful-of-decks">How many cards appear in only a handful of decks?</h3>
+<p>We can use the same approach as earlier to count the card counts, and then display the twenty lowest counts (most likely 1-20 decks) using <code>head()</code>.</p>
+<div id="f2a41fae" class="cell" data-execution_count="15">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>count_counts <span class="op">=</span> card_counts[<span class="st">'count'</span>].value_counts().reset_index()</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>count_counts.columns <span class="op">=</span> [<span class="st">'card_count'</span>, <span class="st">'count'</span>]</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>count_counts <span class="op">=</span> count_counts.sort_values(by<span class="op">=</span><span class="st">'card_count'</span>, ascending<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>count_counts.head(<span class="dv">20</span>)</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">'</span><span class="ch">\n</span><span class="st">'</span>, <span class="bu">sum</span>(count_counts.head(<span class="dv">20</span>)[<span class="st">"count"</span>]))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+ 5696</code></pre>
+</div>
+</div>
+<p>There are 2320 (of the 6804) cards that only appear in one decklist, and 5696 in total that appear in 20 or less decklists. This means that only 1,108 cards appear in more than 21 decklists.</p>
+</section>
+<section id="cleaning-up-the-decklists" class="level3">
+<h3 class="anchored" data-anchor-id="cleaning-up-the-decklists">Cleaning up the Decklists</h3>
+<p>We end this part by trimming down decklist by removing the very frequent and the very infrequent cards. First, we bring the counts into <code>decklist</code> by joining it with card_counts using <code>merge()</code>.</p>
+<div id="f19bac87" class="cell" data-execution_count="16">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>decklist <span class="op">=</span> pd.merge(decklist, card_counts, on <span class="op">=</span> <span class="st">'card'</span>, how <span class="op">=</span> <span class="st">'left'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We want to exclude the top 9 cards, which are those that appear in 1309 or more decks, and we also want to exclude the bottom 5696 carrds, or the ones that appear in 20 decks or less.</p>
+<div id="dd60a3d8" class="cell" data-execution_count="17">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>decklist[<span class="st">'card'</span>].nunique()</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>decklist_trimmed <span class="op">=</span> decklist[decklist[<span class="st">'count'</span>] <span class="op">&gt;</span> <span class="dv">20</span>]</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>decklist_trimmed <span class="op">=</span> decklist_trimmed[decklist_trimmed[<span class="st">'count'</span>] <span class="op">&lt;</span> <span class="dv">1309</span>]</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>decklist_trimmed[<span class="st">'card'</span>].nunique()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="12">
+<pre><code>1100</code></pre>
+</div>
+</div>
+<p>We also know that there are more lands that are very common in the Atraxa decks. We create a list of the most common of these (<code>other_common_lands</code>) and then</p>
+<div id="6a9552bb" class="cell" data-execution_count="19">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Filter out rows where itemsets contain any of the common lands</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>decklist_trimmed <span class="op">=</span> decklist_trimmed[<span class="op">~</span>decklist_trimmed[<span class="st">'card'</span>].<span class="bu">apply</span>(<span class="kw">lambda</span> x: x <span class="kw">in</span> other_common_lands)]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="c50ca4b1" class="cell" data-execution_count="20">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>decklist_trimmed[<span class="st">'card'</span>].nunique()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="15">
+<pre><code>1077</code></pre>
+</div>
+</div>
+<p>This step reduced the number of unique cards from 6804 to 1100 then to 1077, which could be more workable for the algorithms we are going to apply. We’ll remove the unnecessary columns first since we only need the deck id and the card names that we originally started with.</p>
+<div id="be1cfb6f" class="cell" data-execution_count="21">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>decklist_trimmed <span class="op">=</span> decklist_trimmed.drop(columns <span class="op">=</span>[<span class="st">'count'</span>, <span class="st">'pct'</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+</section>
+<section id="transforming-the-decklists-into-the-right-format" class="level2">
+<h2 class="anchored" data-anchor-id="transforming-the-decklists-into-the-right-format">Transforming the decklists into the right format</h2>
+<p>The <code>apriori()</code> function requires a dataframe where each row is a transaction (or basket, customer, or, in our case, a deck) while each column corresponds to an item. (i.e., a card) The value will be a binary (True/False or 1/0) which indicates whether the card is in that specific deck or not.</p>
+<p>We use the code chunk below to perform this transformation, but there should be multiple ways to achieve this. The resulting object, as expected, would be a 2131 x 6804 dataframe. The values are all True/False which are easier for <code>apriori()</code> to work with.</p>
+<div id="79b12075" class="cell" data-execution_count="22">
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>decklists_encoded <span class="op">=</span> decklist_trimmed.drop_duplicates()</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>decklists_encoded<span class="op">=</span> decklists_encoded.pivot(index<span class="op">=</span><span class="st">'deck'</span>, columns<span class="op">=</span><span class="st">'card'</span>, values<span class="op">=</span><span class="st">'card'</span>)</span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Fill NaN values with False (optional)</span></span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>decklists_encoded <span class="op">=</span> decklists_encoded.notna()</span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Reset the index if needed</span></span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a>decklists_encoded.reset_index(inplace<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a>decklists_encoded <span class="op">=</span> decklists_encoded.drop(<span class="st">'deck'</span>, axis<span class="op">=</span><span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="running-the-algorithm" class="level2">
+<h2 class="anchored" data-anchor-id="running-the-algorithm">Running the Algorithm</h2>
+<p>The <code>apriori()</code> and <code>fpgrowth()</code> function is used to identify frequent item sets and returns an object which contains the itemsets and their support. The functions require a dataframe (described earlier) as a mandatory input. These differ by the way they identify frequent itemsets. For larger datasets, <code>fpgrowth()</code> will typically be more efficient in finding the itemsets.</p>
+<p>The user can specify a minimum support threshold (<code>min_support</code>) for the function, otherwise it defaults to 0.5. This default value is a bit too high especially as we have not done any exploratory analysis to understand what is frequent or infrequent. We will use a value of 0.05 or 5% for our case. We also specify True for the <code>use_colnames</code> argument to indicate that the column names and not the indices will be used for the results. We also add a maximum itemset size of 5 using the <code>max_len</code> argument in order to limit the number of subsets scanned by the algorithm.</p>
+<div id="887a501e" class="cell" data-execution_count="25">
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> mlxtend.frequent_patterns <span class="im">import</span> apriori, fpgrowth</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>frequent_itemsets <span class="op">=</span> fpgrowth(decklists_encoded, min_support<span class="op">=</span><span class="fl">0.05</span>, use_colnames<span class="op">=</span><span class="va">True</span>, max_len <span class="op">=</span> <span class="dv">5</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="callout callout-style-default callout-warning callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Warning
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>This code chunk will still run a good amount of time even with the reductions that we made.</p>
+<p>Consider increasing the minimum support, trimming down the data, or using an even more efficient algorithm before performing this yourself for your own purpose.</p>
+<p>For MBA, using the optional argument <code>max_len</code> is also desirable since it specifies the maximum size of the sets generated. A set size of 2 or 3 will lead to simple and practical use for retail purposes.</p>
+</div>
+</div>
+</section>
+<section id="identifying-frequent-sets" class="level2">
+<h2 class="anchored" data-anchor-id="identifying-frequent-sets">Identifying Frequent Sets</h2>
+<p>While <code>apriori()</code> and <code>fpgrowth()</code> does not produce association rules yet, they already generate frequent itemsets based on the minimum support that we indicated. We can use the results to identify staples or very common or typical cards that users have included in their Atraxa decklists. For our analysis, we will consider cards that appear in 85% of decks as staples.</p>
+<p>With the frequent itemset output, we should be able to identify any high frequency sets of cards.</p>
+<section id="counting-the-itemset-sizes" class="level3">
+<h3 class="anchored" data-anchor-id="counting-the-itemset-sizes">Counting the itemset sizes</h3>
+<p>The first step we want to do before answering the next questions is indicate the number of items. This can be done quickly by just applying the <code>len()</code> function to each element of the <code>itemsets</code> column.</p>
+<div id="d4f7f41a" class="cell" data-execution_count="28">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>frequent_itemsets[<span class="st">'size'</span>] <span class="op">=</span> frequent_itemsets[<span class="st">'itemsets'</span>].<span class="bu">apply</span>(<span class="bu">len</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We should be able to see a preview with the new column using <code>head()</code></p>
+<div id="bfc1bb98" class="cell" data-execution_count="29">
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>frequent_itemsets.head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="21">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">support</th>
+<th data-quarto-table-cell-role="th">itemsets</th>
+<th data-quarto-table-cell-role="th">size</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>0.612207</td>
+<td>(Exotic Orchard)</td>
+<td>1</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>0.537089</td>
+<td>(Swords to Plowshares)</td>
+<td>1</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>0.528638</td>
+<td>(Astral Cornucopia)</td>
+<td>1</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>0.525352</td>
+<td>(Tezzeret's Gambit)</td>
+<td>1</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>0.516432</td>
+<td>(Thrummingbird)</td>
+<td>1</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</section>
+<section id="what-are-the-most-common-set-of-cards-included-in-atraxa-decks" class="level3">
+<h3 class="anchored" data-anchor-id="what-are-the-most-common-set-of-cards-included-in-atraxa-decks">What are the most common set of cards included in Atraxa decks?</h3>
+<p>Aside from individual cards like the staples mentioned earlier, we expect that there are cards that will recur as a group across different users’ decks. Some of these might just be staples, but some might be tied to specific strategies or ‘<em>builds</em>’ for the Atraxa deck.</p>
+<p>We can use the code below to find the most frequent set of five cards in the user submitted decks.</p>
+<div id="c11172e1" class="cell" data-execution_count="30">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>frequent_itemsets[frequent_itemsets[<span class="st">'size'</span>] <span class="op">==</span> <span class="dv">5</span>].sort_values(by<span class="op">=</span><span class="st">'support'</span>, ascending <span class="op">=</span> <span class="va">False</span>).head(<span class="dv">1</span>)</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\n</span><span class="st">"</span>)</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>frequent_itemsets[frequent_itemsets[<span class="st">'size'</span>] <span class="op">==</span> <span class="dv">5</span>].sort_values(by<span class="op">=</span><span class="st">'support'</span>, ascending <span class="op">=</span> <span class="va">False</span>).head(<span class="dv">1</span>)[<span class="st">"itemsets"</span>].iloc[<span class="dv">0</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="22">
+<pre><code>frozenset({'Evolution Sage',
+           'Exotic Orchard',
+           "Karn's Bastion",
+           'Swords to Plowshares',
+           "Tezzeret's Gambit"})</code></pre>
+</div>
+</div>
+<p><em>Evolution Sage</em>, <em>Tezzeret’s Gambit</em>, <em>Karn’s Bastion</em>, <em>Exotic Orchard</em>, and Swords to Plowshares are a set of five cards (excluding the staples and lands that we deleted previously) that appear in 17% of Atraxa decks.</p>
+</section>
+<section id="what-is-the-next-most-frequent-disjoint-set-of-five-cards" class="level3">
+<h3 class="anchored" data-anchor-id="what-is-the-next-most-frequent-disjoint-set-of-five-cards">What is the next most frequent disjoint set of five cards?</h3>
+<p>If we just look at the top 5-card sets, we will see the same cards repeating over and over again. What if we wanted to find a unique set of frequently included 5-cards?</p>
+<div id="67f019fc" class="cell" data-execution_count="31">
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>frequent_itemsets[frequent_itemsets[<span class="st">'size'</span>] <span class="op">==</span> <span class="dv">5</span>].sort_values(by<span class="op">=</span><span class="st">'support'</span>, ascending <span class="op">=</span> <span class="va">False</span>).head(<span class="dv">10</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="23">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">support</th>
+<th data-quarto-table-cell-role="th">itemsets</th>
+<th data-quarto-table-cell-role="th">size</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">413</td>
+<td>0.169484</td>
+<td>(Karn's Bastion, Tezzeret's Gambit, Evolution ...</td>
+<td>5</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">382</td>
+<td>0.167606</td>
+<td>(Karn's Bastion, Astral Cornucopia, Evolution ...</td>
+<td>5</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">408</td>
+<td>0.167606</td>
+<td>(Tezzeret's Gambit, Astral Cornucopia, Evoluti...</td>
+<td>5</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">399</td>
+<td>0.167606</td>
+<td>(Karn's Bastion, Tezzeret's Gambit, Astral Cor...</td>
+<td>5</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">18372</td>
+<td>0.166197</td>
+<td>(Karn's Bastion, Tezzeret's Gambit, Evolution ...</td>
+<td>5</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">570</td>
+<td>0.164319</td>
+<td>(Karn's Bastion, Evolution Sage, Swords to Plo...</td>
+<td>5</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">1204</td>
+<td>0.163850</td>
+<td>(Karn's Bastion, Tezzeret's Gambit, Evolution ...</td>
+<td>5</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">492</td>
+<td>0.163850</td>
+<td>(Tezzeret's Gambit, Evolution Sage, Swords to ...</td>
+<td>5</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">846</td>
+<td>0.163380</td>
+<td>(Karn's Bastion, Tezzeret's Gambit, Evolution ...</td>
+<td>5</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">410</td>
+<td>0.161502</td>
+<td>(Karn's Bastion, Tezzeret's Gambit, Astral Cor...</td>
+<td>5</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>We can compare each of the itemsets with the previous five card list until we find one which does not share any elements with it. We can use the following code which applies a simple function to the itemsets column and use that as a filter.</p>
+<div id="a86ae72a" class="cell" data-execution_count="32">
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>top_5cardset <span class="op">=</span> frequent_itemsets[frequent_itemsets[<span class="st">'size'</span>] <span class="op">==</span> <span class="dv">5</span>].sort_values(by<span class="op">=</span><span class="st">'support'</span>, ascending <span class="op">=</span> <span class="va">False</span>).head(<span class="dv">1</span>)[<span class="st">"itemsets"</span>].iloc[<span class="dv">0</span>]</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>frequent_5cards <span class="op">=</span> frequent_itemsets[frequent_itemsets[<span class="st">'size'</span>] <span class="op">==</span> <span class="dv">5</span>].sort_values(by<span class="op">=</span><span class="st">'support'</span>, ascending <span class="op">=</span> <span class="va">False</span>)</span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> contains_card(itemset, cards):</span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> <span class="bu">any</span>(item <span class="kw">in</span> cards <span class="cf">for</span> item <span class="kw">in</span> itemset)</span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb33-7"><a href="#cb33-7" aria-hidden="true" tabindex="-1"></a>frequent_5cards_other <span class="op">=</span> frequent_5cards[<span class="op">~</span>frequent_5cards[<span class="st">'itemsets'</span>].<span class="bu">apply</span>(<span class="kw">lambda</span> x: contains_card(x, top_5cardset))]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We can then call the first element of the new object to find a disjoint set of five cards.</p>
+<div id="27ea0d72" class="cell" data-execution_count="33">
+<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>frequent_5cards_other.head(<span class="dv">1</span>)</span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\n</span><span class="st">"</span>)</span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>frequent_5cards_other.head(<span class="dv">1</span>)[<span class="st">"itemsets"</span>].iloc[<span class="dv">0</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="25">
+<pre><code>frozenset({'Ezuri, Stalker of Spheres',
+           'Infectious Inquiry',
+           'Prologue to Phyresis',
+           'Tekuthal, Inquiry Dominus',
+           "Vraska's Fall"})</code></pre>
+</div>
+</div>
+<p>The output shows that this set of cards includes: <em>Infectious Inquiry</em>, <em>Prologue to Phyresis</em>, <em>Vraska’s Fall</em>, <em>Tekuthal, Inquiry Dominus</em>, Ezuri, <em>Stalker of Spheres</em>. The support for this set is 0.138967– meaning it appears in 13.9% of Atraxa decks. Note that this does not imply that this set of cards do not occur with the first five identified. We simply wanted to find a unique set of five which might or might not be used with the first five cards.</p>
+</section>
+</section>
+<section id="generating-association-rules" class="level2">
+<h2 class="anchored" data-anchor-id="generating-association-rules">Generating Association Rules</h2>
+<p>While we can discover a lot with the frequent itemsets, this is limited to questions about the set frequencies in isolation. We can use <code>association_rules()</code> to generate a list of rules which describe the correlation or likelihood of items being present with other items.</p>
+<p>The function requires a frequent itemset dataframe as an input. The user can define the metric and the minimum value to use using the <code>metric</code> and <code>min_threshold</code> arguments. The former can accept ‘support’, ‘confidence’ or ‘lift’ as metrics.</p>
+<p>We use the code chunk below to generate the association rules with a minimum <em>lift</em> of 1. The first line retains only the sets with a length of 1 to 3. This means that we will have at most two elements in the antecedent (left side) or consequent (right side) of each rule. We do this as we will focus on single card associations, and as this will reduce the number of rules significantly. The next line of the code chunk removes the size column that we added to the dataframe to bring it back to the right format.</p>
+<div id="38d2620d" class="cell" data-execution_count="34">
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> mlxtend.frequent_patterns <span class="im">import</span> association_rules</span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>frequent_itemsets <span class="op">=</span> frequent_itemsets[frequent_itemsets[<span class="st">'size'</span>] <span class="op">&lt;</span> <span class="dv">4</span>]</span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>frequent_itemsets <span class="op">=</span> frequent_itemsets.drop(columns <span class="op">=</span>[<span class="st">'size'</span>])</span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a>rules <span class="op">=</span> association_rules(frequent_itemsets, metric<span class="op">=</span><span class="st">"lift"</span>, min_threshold<span class="op">=</span><span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="4ba1d46a" class="cell" data-execution_count="37">
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a>rules.shape</span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\n</span><span class="st">"</span>)</span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>rules.head()</span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\n</span><span class="st">"</span>)</span>
+<span id="cb38-5"><a href="#cb38-5" aria-hidden="true" tabindex="-1"></a>rules.columns</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+
+
+</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="27">
+<pre><code>Index(['antecedents', 'consequents', 'antecedent support',
+       'consequent support', 'support', 'confidence', 'lift', 'leverage',
+       'conviction', 'zhangs_metric'],
+      dtype='object')</code></pre>
+</div>
+</div>
+<p>The resulting dataframe has 288,366 rows or rules with 10 columns each. The antecedent and the consequent are each in separate columns. There are three columns for support, which are for the antecedent, the consequent, or for the two combined. Among the other metrics, we also have columns for the confidence and the lift.</p>
+<p>The code chunk below will display the five rules with the highest lift.</p>
+<div id="ebbba68d" class="cell" data-execution_count="38">
+<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>top_5_rules <span class="op">=</span> rules.sort_values(by<span class="op">=</span><span class="st">'lift'</span>, ascending <span class="op">=</span> <span class="va">False</span>).head(<span class="dv">5</span>)[[<span class="st">'antecedents'</span>, <span class="st">'consequents'</span>, <span class="st">'confidence'</span>, <span class="st">'consequent support'</span>, <span class="st">'lift'</span>]]</span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(top_5_rules)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                               antecedents  \
+190764  (Underground Sea, Tropical Island)   
+190769                            (Tundra)   
+190752         (Underground Sea, Savannah)   
+190757                            (Tundra)   
+190741                     (Tundra, Bayou)   
+
+                               consequents  confidence  consequent support  \
+190764                            (Tundra)    0.972028            0.071362   
+190769  (Underground Sea, Tropical Island)    0.914474            0.067136   
+190752                            (Tundra)    0.965753            0.071362   
+190757         (Underground Sea, Savannah)    0.927632            0.068545   
+190741                   (Underground Sea)    0.979167            0.073239   
+
+             lift  
+190764  13.621181  
+190769  13.621181  
+190752  13.533255  
+190757  13.533255  
+190741  13.369391  </code></pre>
+</div>
+</div>
+<p>The first rule can be read as: if a decklist contains <em>Tropical Island</em> and <em>Underground Sea</em>, it is 97% likely to have <em>Tundra</em>. The 13.621 lift value means that <em>Tundra</em> is 12.6x more likely to be seen with these two cards than in general.</p>
+</section>
+<section id="using-association-rules-to-find-how-cards-are-potentially-being-used" class="level2">
+<h2 class="anchored" data-anchor-id="using-association-rules-to-find-how-cards-are-potentially-being-used">Using Association Rules to find how cards are (potentially) being used</h2>
+<p>Aside from simply finding high lift rules, we can use the association rules by</p>
+<p>The code below shows five cards that are used in less than 250 decks. We already have the counts in the card_counts dataframe so we just need to select with the appropriate mask.</p>
+<div id="bccdd984" class="cell" data-execution_count="39">
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a>card_counts[card_counts[<span class="st">'count'</span>] <span class="op">&lt;</span> <span class="dv">250</span>].head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="29">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">card</th>
+<th data-quarto-table-cell-role="th">count</th>
+<th data-quarto-table-cell-role="th">pct</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">191</td>
+<td>Simic Signet</td>
+<td>249</td>
+<td>11.7</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">190</td>
+<td>Prairie Stream</td>
+<td>249</td>
+<td>11.7</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">192</td>
+<td>Yavimaya Coast</td>
+<td>248</td>
+<td>11.6</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">193</td>
+<td>Champion of Lambholt</td>
+<td>248</td>
+<td>11.6</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">194</td>
+<td>Brokers Confluence</td>
+<td>247</td>
+<td>11.6</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>Let’s say we focus on the card <em>Broker’s Confluence</em> which is a fairly recent card. How can we use the association rules to find where this card is being added by players?</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://cards.scryfall.io/normal/front/6/5/657ff5fc-1a95-46f9-85f7-fc1ad757c8c4.jpg?1673482329" class="img-fluid quarto-figure quarto-figure-center figure-img" style="width:40.0%"></p>
+</figure>
+</div>
+<p>We can scan the association rules, by checking the ones where the consequent is <em>Brokers Confluence</em>, and find the ones where the confidence or lift are sufficiently high. (we use a lift of 1.5 as our filter)</p>
+<div id="d7c99f82" class="cell" data-execution_count="40">
+<div class="sourceCode cell-code" id="cb44"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a>rules[(rules[<span class="st">'consequents'</span>] <span class="op">==</span> {<span class="st">'Brokers Confluence'</span>}) <span class="op">&amp;</span> (rules[<span class="st">'lift'</span>] <span class="op">&gt;</span> <span class="fl">1.5</span>)][[<span class="st">"antecedents"</span>,<span class="st">"confidence"</span>,<span class="st">"lift"</span>]].head(<span class="dv">10</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="30">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">antecedents</th>
+<th data-quarto-table-cell-role="th">confidence</th>
+<th data-quarto-table-cell-role="th">lift</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">257432</td>
+<td>(Grateful Apparition)</td>
+<td>0.218147</td>
+<td>1.881184</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">257437</td>
+<td>(Contentious Plan)</td>
+<td>0.226069</td>
+<td>1.949504</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">257444</td>
+<td>(Thrummingbird, Evolution Sage)</td>
+<td>0.189223</td>
+<td>1.631762</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">257468</td>
+<td>(Inexorable Tide, Thrummingbird)</td>
+<td>0.188006</td>
+<td>1.621270</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">257480</td>
+<td>(Flux Channeler, Evolution Sage)</td>
+<td>0.176093</td>
+<td>1.518531</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">257486</td>
+<td>(Thrummingbird, Flux Channeler)</td>
+<td>0.212727</td>
+<td>1.834450</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">257492</td>
+<td>(Tezzeret's Gambit, Flux Channeler)</td>
+<td>0.177419</td>
+<td>1.529973</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">257527</td>
+<td>(Tekuthal, Inquiry Dominus, Evolution Sage)</td>
+<td>0.178730</td>
+<td>1.541272</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">257533</td>
+<td>(Ezuri, Stalker of Spheres, Evolution Sage)</td>
+<td>0.193811</td>
+<td>1.671326</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">257545</td>
+<td>(Everflowing Chalice, Evolution Sage)</td>
+<td>0.175159</td>
+<td>1.510482</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>It looks like Brokers Ascendancy is being added to decks 50% more when there are cards like the ones above which are themed around the <em>proliferate</em> ability.</p>
+</section>
+</section>
+<section id="this-exercises-end-step" class="level1">
+<h1>This Exercise’s End Step</h1>
+<p>This is just a short demonstration so one will find that some of the steps could have definitely been streamlined and more data could have been added to make the filtering and analysis easier or more meaningful.</p>
+<p>We have gone through a possible application of frequent pattern or association rules mining outside market basket analysis. There might be other novel ways to apply the same technique, but a good understanding of the underlying concept is necessary to understand where and how these techniques can potentially be used.</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    // For code content inside modals, clipBoardJS needs to be initialized with a container option
+    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

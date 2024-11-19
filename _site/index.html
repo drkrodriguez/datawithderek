@@ -191,7 +191,7 @@ window.Quarto = {
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
         
-    <h5 class="quarto-listing-category-title">Categories</h5><div class="quarto-listing-category category-default"><div class="category" data-category="">All <span class="quarto-category-count">(2)</span></div><div class="category" data-category="Geospatial Analysis">Geospatial Analysis <span class="quarto-category-count">(2)</span></div><div class="category" data-category="R">R <span class="quarto-category-count">(2)</span></div><div class="category" data-category="Tanzania">Tanzania <span class="quarto-category-count">(1)</span></div><div class="category" data-category="Thailand">Thailand <span class="quarto-category-count">(1)</span></div></div></div>
+    <h5 class="quarto-listing-category-title">Categories</h5><div class="quarto-listing-category category-default"><div class="category" data-category="">All <span class="quarto-category-count">(3)</span></div><div class="category" data-category="Geospatial Analysis">Geospatial Analysis <span class="quarto-category-count">(2)</span></div><div class="category" data-category="MTG">MTG <span class="quarto-category-count">(1)</span></div><div class="category" data-category="Market Basket Analysis">Market Basket Analysis <span class="quarto-category-count">(1)</span></div><div class="category" data-category="Pattern Mining">Pattern Mining <span class="quarto-category-count">(1)</span></div><div class="category" data-category="Python">Python <span class="quarto-category-count">(1)</span></div><div class="category" data-category="R">R <span class="quarto-category-count">(2)</span></div><div class="category" data-category="Tanzania">Tanzania <span class="quarto-category-count">(1)</span></div><div class="category" data-category="Thailand">Thailand <span class="quarto-category-count">(1)</span></div><div class="category" data-category="Web Scraping">Web Scraping <span class="quarto-category-count">(1)</span></div></div></div>
 <!-- main -->
 <main class="content quarto-banner-title-block column-page-left" id="quarto-document-content">
 
@@ -205,8 +205,74 @@ window.Quarto = {
 
 
 <div class="quarto-listing quarto-listing-container-default" id="listing-listing">
+<div class="listing-actions-group">
+   <div class="input-group input-group-sm quarto-listing-sort">
+     <span class="input-group-text"><i class="bi bi-sort-down"></i></span>
+     <select id="listing-listing-sort" class="form-select" aria-label="Order By" onchange="window['quarto-listings']['listing-listing'].sort(this.options[this.selectedIndex].value, { order: this.options[this.selectedIndex].getAttribute('data-direction')})">
+       <option value="" disabled="" selected="" hidden="">Order By</option>
+       <option value="index" data-direction="asc">Default</option>
+         <option value="listing-title" data-direction="asc">
+          Title
+        </option>
+         <option value="listing-date-sort" data-direction="asc">
+          Date - Oldest
+        </option>
+         <option value="listing-date-sort" data-direction="desc">
+          Date - Newest
+        </option>
+         <option value="listing-author" data-direction="asc">
+          Author
+        </option>
+     </select>
+  </div>
+</div>
 <div class="list quarto-listing-default">
-<div class="quarto-post image-right" data-index="0" data-categories="R,Geospatial Analysis,Thailand" data-listing-date-sort="1731427200000" data-listing-file-modified-sort="1731497435030" data-listing-date-modified-sort="1731497435000" data-listing-reading-time-sort="59" data-listing-word-count-sort="11753">
+<div class="quarto-post image-right" data-index="0" data-categories="Python,Pattern Mining,Market Basket Analysis,Web Scraping,MTG" data-listing-date-sort="1731945600000" data-listing-file-modified-sort="1732020736452" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="20" data-listing-word-count-sort="3976">
+<div class="thumbnail">
+<p><a href="./posts/atraxa-edh-with-mba/index.html" class="no-external"></a></p><a href="./posts/atraxa-edh-with-mba/index.html" class="no-external">
+<p><img loading="lazy" src="./posts/atraxa-edh-with-mba/atraxa-praetors-voice.jpg" class="thumbnail-image"></p>
+</a><p><a href="./posts/atraxa-edh-with-mba/index.html" class="no-external"></a></p>
+</div>
+<div class="body">
+<h3 class="no-anchor listing-title">
+<a href="./posts/atraxa-edh-with-mba/index.html" class="no-external">Analysing Card Choices with Frequent Pattern Mining</a>
+</h3>
+<div class="listing-subtitle">
+<a href="./posts/atraxa-edh-with-mba/index.html" class="no-external"></a>
+</div>
+<div class="listing-categories">
+<div class="listing-category" onclick="window.quartoListingCategory('Python'); return false;">
+Python
+</div>
+<div class="listing-category" onclick="window.quartoListingCategory('Pattern Mining'); return false;">
+Pattern Mining
+</div>
+<div class="listing-category" onclick="window.quartoListingCategory('Market Basket Analysis'); return false;">
+Market Basket Analysis
+</div>
+<div class="listing-category" onclick="window.quartoListingCategory('Web Scraping'); return false;">
+Web Scraping
+</div>
+<div class="listing-category" onclick="window.quartoListingCategory('MTG'); return false;">
+MTG
+</div>
+</div>
+<div class="listing-description">
+<a href="./posts/atraxa-edh-with-mba/index.html" class="no-external">In this post, I use frequent pattern mining or association rule mining, which is typically used for market basket analysis, in order to analyze card choices in more than a…<strong></strong><strong></strong><strong></strong><strong></strong></a>
+</div>
+</div>
+<div class="metadata">
+<a href="./posts/atraxa-edh-with-mba/index.html" class="no-external">
+<div class="listing-date">
+Nov 19, 2024
+</div>
+<div class="listing-author">
+Derek Rodriguez
+</div>
+</a>
+</div>
+</div>
+<div class="quarto-post image-right" data-index="1" data-categories="R,Geospatial Analysis,Thailand" data-listing-date-sort="1731427200000" data-listing-file-modified-sort="1731497435030" data-listing-date-modified-sort="1731497435000" data-listing-reading-time-sort="59" data-listing-word-count-sort="11753">
 <div class="thumbnail">
 <p><a href="./posts/thai-tourism-covid/index.html" class="no-external"></a></p><a href="./posts/thai-tourism-covid/index.html" class="no-external">
 <p><img loading="lazy" src="./posts/thai-tourism-covid/TH-ESA.jpg" class="thumbnail-image"></p>
@@ -245,7 +311,7 @@ Derek Rodriguez
 </a>
 </div>
 </div>
-<div class="quarto-post image-right" data-index="1" data-categories="R,Geospatial Analysis,Tanzania" data-listing-date-sort="1731427200000" data-listing-file-modified-sort="1731499468637" data-listing-date-modified-sort="1731499468000" data-listing-reading-time-sort="63" data-listing-word-count-sort="12433">
+<div class="quarto-post image-right" data-index="2" data-categories="R,Geospatial Analysis,Tanzania" data-listing-date-sort="1731427200000" data-listing-file-modified-sort="1731499468637" data-listing-date-modified-sort="1731499468000" data-listing-reading-time-sort="63" data-listing-word-count-sort="12433">
 <div class="thumbnail">
 <p><a href="./posts/tz-fin-2023/index.html" class="no-external"></a></p><a href="./posts/tz-fin-2023/index.html" class="no-external">
 <p><img loading="lazy" src="./posts/tz-fin-2023/TZ-mobile-coeff.jpg" class="thumbnail-image"></p>
