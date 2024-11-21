@@ -8,11 +8,11 @@ image: "atraxa-praetors-voice.jpg"
 
 In this post, I use frequent pattern mining or association rule mining, which is typically used for market basket analysis, in order to analyze card choices in more than a thousand user-uploaded decks. I will be using Python's **requests**, **beautifulsoup4**, **mtg_parser**, and **mlxtend** packages to perform the main activities.
 
-We've learned association rule mining in multiple courses in MITB (Customer Analytics, Data Science for Business) primarily for Market Basket Analysis. The same technique should be applicable outside retail, where the questions can be addressed by find highly correlated items or sets of items.
+We've learned association rule mining in multiple courses in MITB (Customer Analytics, Data Science for Business) primarily for Market Basket Analysis. The same technique should be applicable outside retail, where the questions can be addressed by finding highly correlated items or sets of items.
 
 # Introduction
 
-For those unaware, [Magic the Gathering](https://magic.wizards.com/en) (MTG) is a trading card game that was first introduced in 1993, and I have been playing it (casually) since 1995. There are a number of formats, or ways to play, in this game, but the most popular for a number of years now is [Commander](https://magic.wizards.com/en/formats/commander). The format requires each player to build a deck of 100 cards which is helmed by, and built around a "commander".
+For those unaware, [Magic the Gathering](https://magic.wizards.com/en) (MTG) is a trading card game that was released in 1993, and I have been playing it (casually) since 1995. There are a number of formats, or ways to play, in this game, but the most popular for a number of years now is [Commander](https://magic.wizards.com/en/formats/commander). The format requires each player to build a deck of 100 cards which is helmed by, and built around a "commander".
 
 The most popular commander for the past two years, based on the site [EDHREC.com](https://edhrec.com/commanders), as of writing is Atraxa, Praetors' Voice. EDHREC already provides an analysis of typical decklists in their site for [Atraxa](https://edhrec.com/commanders/atraxa-praetors-voice) and other commanders, but I want to see if I can do my own simple analysis using Python.
 
