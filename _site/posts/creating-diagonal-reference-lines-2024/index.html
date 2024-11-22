@@ -6,8 +6,10 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
+<meta name="author" content="Derek Rodriguez">
+<meta name="dcterms.date" content="2024-11-22">
 
-<title>data with derek</title>
+<title>Diagonal Reference Lines in Power BI – data with derek</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -23,24 +25,22 @@ ul.task-list li input[type="checkbox"] {
 </style>
 
 
-<script src="site_libs/quarto-nav/quarto-nav.js"></script>
-<script src="site_libs/quarto-nav/headroom.min.js"></script>
-<script src="site_libs/clipboard/clipboard.min.js"></script>
-<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
-<script src="site_libs/quarto-search/fuse.min.js"></script>
-<script src="site_libs/quarto-search/quarto-search.js"></script>
-<meta name="quarto:offset" content="./">
-<script src="site_libs/quarto-listing/list.min.js"></script>
-<script src="site_libs/quarto-listing/quarto-listing.js"></script>
-<script src="site_libs/quarto-html/quarto.js"></script>
-<script src="site_libs/quarto-html/popper.min.js"></script>
-<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
-<script src="site_libs/quarto-html/anchor.min.js"></script>
-<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark.css" rel="stylesheet" id="quarto-text-highlighting-styles">
-<script src="site_libs/bootstrap/bootstrap.min.js"></script>
-<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="dark">
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<script src="../../site_libs/quarto-html/quarto.js"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-dark.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="dark">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -68,35 +68,6 @@ ul.task-list li input[type="checkbox"] {
     "search-label": "Search"
   }
 }</script>
-<script>
-
-  window.document.addEventListener("DOMContentLoaded", function (_event) {
-    const listingTargetEl = window.document.querySelector('#listing-listing .list');
-    if (!listingTargetEl) {
-      // No listing discovered, do not attach.
-      return; 
-    }
-
-    const options = {
-      valueNames: ['listing-date','listing-title','listing-author','listing-image','listing-description','listing-categories',{ data: ['index'] },{ data: ['categories'] },{ data: ['listing-date-sort'] },{ data: ['listing-file-modified-sort'] }],
-      
-      searchColumns: ["listing-date","listing-title","listing-author","listing-image","listing-description","listing-categories"],
-    };
-
-    window['quarto-listings'] = window['quarto-listings'] || {};
-    window['quarto-listings']['listing-listing'] = new List('listing-listing', options);
-
-    if (window['quarto-listing-loaded']) {
-      window['quarto-listing-loaded']();
-    }
-  });
-
-  window.addEventListener('hashchange',() => {
-    if (window['quarto-listing-loaded']) {
-      window['quarto-listing-loaded']();
-    }
-  })
-  </script>
 
   <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
@@ -128,17 +99,17 @@ window.Quarto = {
 };
 </script>
 
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="../../styles.css">
 </head>
 
-<body class="nav-fixed">
+<body class="nav-fixed fullcontent">
 
 <div id="quarto-search-results"></div>
   <header id="quarto-header" class="headroom fixed-top quarto-banner">
     <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container mx-auto">
-    <a class="navbar-brand" href="./index.html">
+    <a class="navbar-brand" href="../../index.html">
     <span class="navbar-title">data with derek</span>
     </a>
   </div>
@@ -149,7 +120,7 @@ window.Quarto = {
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll ms-auto">
   <li class="nav-item">
-    <a class="nav-link" href="./about.html"> 
+    <a class="nav-link" href="../../about.html"> 
 <span class="menu-text">About</span></a>
   </li>  
   <li class="nav-item compact">
@@ -172,228 +143,195 @@ window.Quarto = {
 <!-- content -->
 <header id="title-block-header" class="quarto-title-block default page-columns page-full">
   <div class="quarto-title-banner page-columns page-full">
-    <div class="quarto-title column-page-left">
-      <h1 class="title">data with derek</h1>
-                      </div>
+    <div class="quarto-title column-body">
+      <h1 class="title">Diagonal Reference Lines in Power BI</h1>
+                                <div class="quarto-categories">
+                <div class="quarto-category">PowerBI</div>
+                <div class="quarto-category">Visualization</div>
+                <div class="quarto-category">Business Analytics</div>
+              </div>
+                  </div>
   </div>
     
   
-  <div class="quarto-title-meta column-page-left">
+  <div class="quarto-title-meta">
 
+      <div>
+      <div class="quarto-title-meta-heading">Author</div>
+      <div class="quarto-title-meta-contents">
+               <p>Derek Rodriguez </p>
+            </div>
+    </div>
       
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">November 22, 2024</p>
+      </div>
+    </div>
     
       
     </div>
     
   
-  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-full page-navbar">
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        
-    <h5 class="quarto-listing-category-title">Categories</h5><div class="quarto-listing-category category-default"><div class="category" data-category="">All <span class="quarto-category-count">(4)</span></div><div class="category" data-category="Business Analytics">Business Analytics <span class="quarto-category-count">(1)</span></div><div class="category" data-category="Geospatial Analysis">Geospatial Analysis <span class="quarto-category-count">(2)</span></div><div class="category" data-category="MTG">MTG <span class="quarto-category-count">(1)</span></div><div class="category" data-category="Market Basket Analysis">Market Basket Analysis <span class="quarto-category-count">(1)</span></div><div class="category" data-category="Pattern Mining">Pattern Mining <span class="quarto-category-count">(1)</span></div><div class="category" data-category="PowerBI">PowerBI <span class="quarto-category-count">(1)</span></div><div class="category" data-category="Python">Python <span class="quarto-category-count">(1)</span></div><div class="category" data-category="R">R <span class="quarto-category-count">(2)</span></div><div class="category" data-category="Tanzania">Tanzania <span class="quarto-category-count">(1)</span></div><div class="category" data-category="Thailand">Thailand <span class="quarto-category-count">(1)</span></div><div class="category" data-category="Visualization">Visualization <span class="quarto-category-count">(1)</span></div><div class="category" data-category="Web Scraping">Web Scraping <span class="quarto-category-count">(1)</span></div></div></div>
+    
 <!-- main -->
-<main class="content quarto-banner-title-block column-page-left" id="quarto-document-content">
+<main class="content quarto-banner-title-block" id="quarto-document-content">
 
 
 
 
 
-<p>My personal projects and discoveries in data analytics.</p>
+<p>In this post, I present a way to create (certain) dynamic diagonal reference lines in PowerBI. The tool has built in ways to create horizonal and vertical reference lines, but there is no built-in way to create diagonal ones.</p>
+<p>Before I show one way of creating them in PowerBI, let me explain what i mean by diagonal <em>reference lines</em>.</p>
+<section id="diagonal-reference-lines" class="level1">
+<h1>Diagonal reference lines?!?</h1>
+<p>Reference lines in PowerBI charts are horizontal or vertical lines that make it easier for the viewer to compare the objects in a charts to a particular value. This value can be a user-defined constant, or a dynamic value based on a DAX measure or based on pre-defined types of lines. (e.g., mean, median, etc)</p>
+<p>Reference lines can be added through the <a href="https://learn.microsoft.com/en-us/power-bi/transform-model/desktop-analytics-pane">Analytics pane</a> of compatible charts like bar charts, scatter plots or line charts. These lines project the reference line across a value of one of the variables in the chart.</p>
+<p>Vertical and horizontal lines are easy to understand and apply– where do diagonal lines come into play though? Diagonal lines can be treated as <a href="https://en.wikipedia.org/wiki/Contour_line"><em>contour lines</em></a> which stands for a specific value for a linear function of the two axes variables.</p>
+<p>To explain this further, let me give an example. In a previous role, I was working on the gross margin or savings agenda, and we want to identify areas where there may be opportunities for cost savings and deliver gross margin improvement.</p>
+<p>Gross margin is the quotient of profit and revenue, but it can also be rewritten as a function of cost and revenue. We can plot products, or brands across cost (or cost per unit) and revenue (or revenue per unit) to show which ones appear overcosted or underpriced. Creating a plot for five different products or brands can give us something like this:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="ScatterPlotWithNoDiagonalExample.jpg" class="img-fluid figure-img" style="width:70.0%"></p>
+<figcaption>Scatter plot with no reference line</figcaption>
+</figure>
+</div>
+<p>While we can compare the items against one another based on their relative positions horizontally or vertically, we can’t readily say whether they are meeting the gross margin target or if they are above or below the average gross margin. Those that are above such a margin threshold will be easier to push for action, than ones that are already meeting the threshold.</p>
+<p>If we go back to the equation of gross margin based on revenue and cost, we can show that the two variables follow a linear function fo a given value of the gross margin.</p>
+<p><span class="math display">\[
+Gross Margin = 1 - \frac{CostPerTonne}{RevenuePerTonne} = c
+\]</span></p>
+<p><span class="math display">\[
+(1-c)RevenuePerTonne = CostPerTonne
+\]</span></p>
+<p>This means that each value of gross margin can be represented by a straight, diagonal line in the same axes. If we add a line for the average gross margin, we can update the chart to look something like this:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="DiagonalRefLineExample.jpg" class="img-fluid figure-img" style="width:70.0%"></p>
+<figcaption>Using a constant GM line on a Cost vs Revenue Chart</figcaption>
+</figure>
+</div>
+<p>Items that are above the line will be ones have above average gross margin. The distance of any point to the line will also hold some meaning. Take item B for example. Item B is below the average gross margin. The horizontal distance of B to the diagonal line will be the change (reduction since it needs to go to the left) in cost in order to meet the current average margin. The vertical distance will have the same interpretation but applied to revenue. (i.e., increase in revenue required)</p>
+</section>
+<section id="creating-diagonal-reference-lines-in-power-bi" class="level1">
+<h1>Creating diagonal reference lines in Power BI</h1>
+<p>I will demonstrate a way of implementing diagonal reference lines in PBI. For this demo, I have taken a list of the <a href="https://en.wikipedia.org/wiki/List_of_largest_companies_by_revenue">largest companies from Wikipedia</a>. (as of this post’s publishing) The list contains 50 companies and contains their name, industry, revenue, profit, number of employees and the country of their headquarters.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><a href="https://en.wikipedia.org/wiki/List_of_largest_companies_by_revenue"><img src="WikipediaLargestCompanies.jpg" class="img-fluid quarto-figure quarto-figure-center figure-img" alt="Wikipedia’s list of largest companies by revenue"></a></p>
+</figure>
+</div>
+<figcaption>Wikipedia’s list of largest companies by revenue</figcaption>
+</figure>
+</div>
+<p>The table from the webpage can be directly loaded into Power BI (<em>Get Data</em> &gt;&gt; <em>Web</em>) and a new column <code>Cost</code> is added which is just the difference between <code>Revenue</code> and <code>Profit</code>. For the example, and for simplicity, the resulting table is called <code>Data</code>.</p>
+<p>To make it similar to the earlier example, (and we don’t introduce additional math to this post) say we are interested in comparing the average <em>Revenue per Employee</em> (e.g., as a measure of productivity) and average <em>Cost per Employee</em> (note: this does not translate to average salary since a lot of other things go into cost) as the underlying variables for profit margin. These can be computed with the creation of simple measures.</p>
+<pre><code>CostPerEmp = SUM(Data[Cost])/SUM(Data[Employees])
+
+RevPerEmp = SUM(Data[Revenue]) / SUM(Data[Employees])</code></pre>
+<p>A scatterplot can already be generated by using these measures as the x- and y-axes, and using the company names (<code>Name</code>) for the values.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="NoRefLine.jpg" class="img-fluid figure-img" style="width:80.0%"></p>
+<figcaption>Scatterplot with no reference lines (US companies)</figcaption>
+</figure>
+</div>
+<p>The plot shows an upward slope which implies that companies with higher cost per employee also have more productive employees, and vice versa. The chart, however, has no way to tell the viewer which companies are below or above average (or target) for the two measures, and as there are only two axes, it also gives no indication of their profit margin. The margin can be added as a tooltip or as the bubble shape, but these either require the user to hover over each point, or, in the case of bubble size, will be hard to interpret if there is a very wide or very narrow range of values.</p>
+<p>Let us address the current chart’s downside, and try to enrich it by adding reference lines for the average values which the viewer can use to compare the companies to. We will do this for the two axes and also for margin. The steps we will take in this demo are:</p>
+<ol type="1">
+<li><p>Adding the x- and y- reference lines (Constant lines)</p></li>
+<li><p>Building the average margin series</p></li>
+<li><p>Fixing the axes ranges</p></li>
+<li><p>Plotting the average margin line</p></li>
+</ol>
+<section id="adding-x--and-y--constant-lines" class="level2">
+<h2 class="anchored" data-anchor-id="adding-x--and-y--constant-lines">1. Adding x- and y- constant lines</h2>
+<p>Power BI can add x- and y- reference lines to compatible visuals through the <em>Analytics pane</em>. If we are adding a line that is not based on the other predefined ones like <em>mean</em>, <em>median</em>, <em>max</em>, then we can make use of the constant lines. As we want to add the average of ratio measures, we should use the last one rather than the average line so it gets computed properly.</p>
+<p>For constant lines, the user can key in a fixed number for the line’s value (e.g., a fixed target regardless of selection), or use the <em>fx,</em> or conditional formatting button to set its value to a measure or parameter.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="adding-x-constant-line.jpg" class="img-fluid quarto-figure quarto-figure-center figure-img" style="width:20.0%"></p>
+</figure>
+</div>
+<p>For the x-axis constant line, we will set it to the <code>CostPerEmp</code> measure, and for the y-axis constant line, we will set it to <code>RevPerEmp</code> measure. We set the <em>Data label</em> option to <em>On</em> so we can also see the average value in the resulting chart.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="WithXandYreflines.jpg" class="img-fluid figure-img" style="width:80.0%"></p>
+<figcaption>Chart with x- and y- constant lines</figcaption>
+</figure>
+</div>
+<p>The average can now be seen as $87K for revenue per employee, and $79K for cost per employee. The average is being pulled down by the large number and large size of the companies in the lower left so the values are far from the middle of the overall range.</p>
+</section>
+<section id="building-the-average-margin-series" class="level2">
+<h2 class="anchored" data-anchor-id="building-the-average-margin-series">2. Building the average margin series</h2>
+<p>Since PowerBI only creates reference lines for each axis, we need a workaround in order to add diagonal lines. In this post, we will do this by creating a series of points that plot the value that we want– which means we create a set of points on the same axes which all have the same margin.</p>
+<p>The first step is computing the average margin. Margin is one less the quotient of cost and revenue, so defining a simple measure <code>Margin</code> is straightforward. To calculate the margin of all the companies <code>Margin-All</code>, we need to use <code>CALCULATE()</code> in order to override the filter context. We use <code>ALLSELECTED()</code> rather than <code>ALL()</code> in order to take any external filters like slicers into account.</p>
+<pre><code>Margin = 1 - SUM(Data[Cost]) / SUM(Data[Revenue])
+
+Margin-All = CALCULATE([Margin], ALLSELECTED(Data[Name])) </code></pre>
+<p><code>Margin-All</code> holds a single value based on filters applied on the visual. For a given value of <code>Margin-All</code>, there will be a corresponding value of <code>CostPerEmp</code> or <code>RevPerEmpl</code>, based on the value of the other. For this demo, we will create a measure to derive the <code>CostPerEmp</code> value to get <code>Margin-All</code> for values of <code>RevPerEmp</code>.</p>
+<pre><code>CostPerEmp-ConstMargin = (1-[Margin-All]) * [RevPerEmp]</code></pre>
+<p>The new measure <code>CostPerEmp-ConstMargin</code> and the original measure <code>RevPerEmp</code> would correspond to pairs of points that give a margin equal to the average of all companies. (based on filters) We will be overlaying these new points as a trend line to generate the reference line.</p>
+</section>
+<section id="fixing-the-axes-ranges" class="level2">
+<h2 class="anchored" data-anchor-id="fixing-the-axes-ranges">3. Fixing the axes ranges</h2>
+<p>Before we generate the margin line, we need to make sure that doing so will not mess up with the axes. If we keep the axes ranges as ‘<em>automatic</em>’, the <code>CostPerEmp</code> and the <code>CostPerEmp-ConstMargin</code> ranges are likely to be different. The latter is likely going to be outside the range of the former so the chart for the average margin line will be ‘zoomed out’.</p>
+<p>To overcome this issue, we need to override the automatic axis ranges. The axes ranges can be modified in the visual’s format pane under the <em>Visual</em> tab.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="adjusting-axes-ranges.jpg" class="img-fluid quarto-figure quarto-figure-center figure-img" style="width:20.0%"></p>
+</figure>
+</div>
+<p>We can specify a fixed number as the minimum and maximum values, but it might be better to use a dynamic range since a hard-coded number might be inappropriate once the user selects or deselects some of the companies.</p>
+<p>One way is to set the minimum and maximum values as a factor of the minimum or maximum values of the (original) axes. We will use an arbitrary 20% and define measures to take 80% (i.e., 1-20%) of the lowest value as the axis minimum and then take 120% of the highest value as the axis maximum.</p>
+<p>For the calculation, we need to use the iterating aggregation functions <code>MAXX()</code> and <code>MINX()</code> since we still need to compute for the Revenue and Cost per Employee per row, since we do not have this as an existing column in the table.</p>
+<pre><code>CPEmax = CALCULATE(MAXX(Data, Data[Cost] / Data[Employees]), ALLSELECTED(Data[Name])) * 1.2
+CPEmin = CALCULATE(MINX(Data, Data[Cost] / Data[Employees]), ALLSELECTED(Data[Name])) * 0.8
+RPEmax = CALCULATE(MAXX(Data, Data[Revenue] / Data[Employees]), ALLSELECTED(Data[Name])) * 1.2
+RPEmin = CALCULATE(MINX(Data, Data[Revenue] / Data[Employees]), ALLSELECTED(Data[Name])) * 0.8</code></pre>
+<p>We will use these measures as the minimum and maximum values of the two axes by using them in the conditional formatting portion or pressing the <em>fx</em> button in the axis range’s option.</p>
+</section>
+<section id="plotting-the-average-margin-line" class="level2">
+<h2 class="anchored" data-anchor-id="plotting-the-average-margin-line">4. Plotting the average margin line</h2>
+<p>To “add” the average GM line into the chart, we perform the following steps:</p>
+<ol type="1">
+<li><p>Duplicate the scatterplot. (i.e., copy and paste the entire visual) Let us call the one we will use for the GM line the “<em>GM chart</em>” while the other one as the “<em>original chart</em>”</p></li>
+<li><p>Replace the x-axis field of the <em>GM chart</em> from <code>CostPerEmp</code> to <code>CostPerEmp-ConstMargin</code>. This should result to a chart with all points along a line</p></li>
+<li><p>Under the Analytics pane of the <em>GM chart</em>, turn on the Trend line. Adjust the formatting like color and line style as needed.</p></li>
+<li><p>Remove the x- and y-axis titles of the by replacing their title with a space. This can be accessed under the format pane of the visual under <em>Visual</em> &gt;&gt; <em>X-axis</em> (or <em>Y-Axis</em>) &gt;&gt; <em>Title</em>. Do not turn off the title as it will change the plot area dimensions.</p></li>
+<li><p>Set the transparency of the background of the original chart to 100%. (via the visual’s <em>Format tab</em> &gt;&gt; <em>Effects</em> &gt;&gt; <em>Background</em>)</p></li>
+<li><p>Move the <em>GM chart</em> to the back (via <em>Format</em> ribbon &gt;&gt; <em>Send backward</em> &gt;&gt; <em>Send to back</em>) and then move it behind the <em>original chart</em>.</p></li>
+</ol>
+<p>After going through these steps, we should end up with a chart with not only the first two reference lines, but also a diagonal line for the average GM.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="FinalChart.jpg" class="img-fluid quarto-figure quarto-figure-center figure-img" style="width:80.0%"></p>
+</figure>
+</div>
+<p>This chart shows that companies like Apple that lie above the diagonal line have higher margin than average, while one like Cardinal Health has below average. This chart would also adjust based on slicer selections– the reference lines and the axes will adjust based on companies selected.</p>
+</section>
+</section>
+<section id="other-uses-of-diagonal-reference-line" class="level1">
+<h1>Other uses of diagonal reference line</h1>
+<p>We went through one application of diagonal reference lines and a way to build them in PowerBI. Aside from plotting margin, other potential use cases for reference lines could be:</p>
+<ul>
+<li><p>Plotting factory capacity and demand or production volume. The reference line can represent a target or average capacity utilization threshold</p></li>
+<li><p>Evaluating projects based on investment amounts and annual returns. The reference line can represent a target or average payback period or rate of return</p></li>
+<li><p>Sales value or volume for two different products or channels. The reference line can represent a target or average sales value</p></li>
+</ul>
+<p>There should be other potential use cases, but all these require that the third variable can be represented by the other two, and that it can be represented as linear contour lines in the scatterplot.</p>
+<p>As usual, before adding the diagonal lines, or any other element in the chart, one must make sure that they add value and that it is making the report more valuable and understandable to the intended audience.</p>
 
 
+</section>
 
-
-<div class="quarto-listing quarto-listing-container-default" id="listing-listing">
-<div class="listing-actions-group">
-   <div class="input-group input-group-sm quarto-listing-sort">
-     <span class="input-group-text"><i class="bi bi-sort-down"></i></span>
-     <select id="listing-listing-sort" class="form-select" aria-label="Order By" onchange="window['quarto-listings']['listing-listing'].sort(this.options[this.selectedIndex].value, { order: this.options[this.selectedIndex].getAttribute('data-direction')})">
-       <option value="" disabled="" selected="" hidden="">Order By</option>
-       <option value="index" data-direction="asc">Default</option>
-         <option value="listing-title" data-direction="asc">
-          Title
-        </option>
-         <option value="listing-date-sort" data-direction="asc">
-          Date - Oldest
-        </option>
-         <option value="listing-date-sort" data-direction="desc">
-          Date - Newest
-        </option>
-         <option value="listing-author" data-direction="asc">
-          Author
-        </option>
-     </select>
-  </div>
-</div>
-<div class="list quarto-listing-default">
-<div class="quarto-post image-right" data-index="0" data-categories="PowerBI,Visualization,Business Analytics" data-listing-date-sort="1732204800000" data-listing-file-modified-sort="1732262680941" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="11" data-listing-word-count-sort="2174">
-<div class="thumbnail">
-<p><a href="./posts/creating-diagonal-reference-lines-2024/index.html" class="no-external"></a></p><a href="./posts/creating-diagonal-reference-lines-2024/index.html" class="no-external">
-<p><img loading="lazy" src="./posts/creating-diagonal-reference-lines-2024/FinalChart.jpg" class="thumbnail-image"></p>
-</a><p><a href="./posts/creating-diagonal-reference-lines-2024/index.html" class="no-external"></a></p>
-</div>
-<div class="body">
-<h3 class="no-anchor listing-title">
-<a href="./posts/creating-diagonal-reference-lines-2024/index.html" class="no-external">Diagonal Reference Lines in Power BI</a>
-</h3>
-<div class="listing-subtitle">
-<a href="./posts/creating-diagonal-reference-lines-2024/index.html" class="no-external"></a>
-</div>
-<div class="listing-categories">
-<div class="listing-category" onclick="window.quartoListingCategory('PowerBI'); return false;">
-PowerBI
-</div>
-<div class="listing-category" onclick="window.quartoListingCategory('Visualization'); return false;">
-Visualization
-</div>
-<div class="listing-category" onclick="window.quartoListingCategory('Business Analytics'); return false;">
-Business Analytics
-</div>
-</div>
-<div class="listing-description">
-<a href="./posts/creating-diagonal-reference-lines-2024/index.html" class="no-external">In this post, I present a way to create (certain) dynamic diagonal reference lines in PowerBI. The tool has built in ways to create horizonal and vertical reference lines…</a>
-</div>
-</div>
-<div class="metadata">
-<a href="./posts/creating-diagonal-reference-lines-2024/index.html" class="no-external">
-<div class="listing-date">
-Nov 22, 2024
-</div>
-<div class="listing-author">
-Derek Rodriguez
-</div>
-</a>
-</div>
-</div>
-<div class="quarto-post image-right" data-index="1" data-categories="Python,Pattern Mining,Market Basket Analysis,Web Scraping,MTG" data-listing-date-sort="1731945600000" data-listing-file-modified-sort="1732150819312" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="20" data-listing-word-count-sort="3975">
-<div class="thumbnail">
-<p><a href="./posts/atraxa-edh-with-mba/index.html" class="no-external"></a></p><a href="./posts/atraxa-edh-with-mba/index.html" class="no-external">
-<p><img loading="lazy" src="./posts/atraxa-edh-with-mba/atraxa-praetors-voice.jpg" class="thumbnail-image"></p>
-</a><p><a href="./posts/atraxa-edh-with-mba/index.html" class="no-external"></a></p>
-</div>
-<div class="body">
-<h3 class="no-anchor listing-title">
-<a href="./posts/atraxa-edh-with-mba/index.html" class="no-external">Analysing Card Choices with Frequent Pattern Mining</a>
-</h3>
-<div class="listing-subtitle">
-<a href="./posts/atraxa-edh-with-mba/index.html" class="no-external"></a>
-</div>
-<div class="listing-categories">
-<div class="listing-category" onclick="window.quartoListingCategory('Python'); return false;">
-Python
-</div>
-<div class="listing-category" onclick="window.quartoListingCategory('Pattern Mining'); return false;">
-Pattern Mining
-</div>
-<div class="listing-category" onclick="window.quartoListingCategory('Market Basket Analysis'); return false;">
-Market Basket Analysis
-</div>
-<div class="listing-category" onclick="window.quartoListingCategory('Web Scraping'); return false;">
-Web Scraping
-</div>
-<div class="listing-category" onclick="window.quartoListingCategory('MTG'); return false;">
-MTG
-</div>
-</div>
-<div class="listing-description">
-<a href="./posts/atraxa-edh-with-mba/index.html" class="no-external">In this post, I use frequent pattern mining or association rule mining, which is typically used for market basket analysis, in order to analyze card choices in more than a…<strong></strong><strong></strong><strong></strong><strong></strong></a>
-</div>
-</div>
-<div class="metadata">
-<a href="./posts/atraxa-edh-with-mba/index.html" class="no-external">
-<div class="listing-date">
-Nov 19, 2024
-</div>
-<div class="listing-author">
-Derek Rodriguez
-</div>
-</a>
-</div>
-</div>
-<div class="quarto-post image-right" data-index="2" data-categories="R,Geospatial Analysis,Thailand" data-listing-date-sort="1731427200000" data-listing-file-modified-sort="1731497435030" data-listing-date-modified-sort="1731497435000" data-listing-reading-time-sort="59" data-listing-word-count-sort="11753">
-<div class="thumbnail">
-<p><a href="./posts/thai-tourism-covid/index.html" class="no-external"></a></p><a href="./posts/thai-tourism-covid/index.html" class="no-external">
-<p><img loading="lazy" src="./posts/thai-tourism-covid/TH-ESA.jpg" class="thumbnail-image"></p>
-</a><p><a href="./posts/thai-tourism-covid/index.html" class="no-external"></a></p>
-</div>
-<div class="body">
-<h3 class="no-anchor listing-title">
-<a href="./posts/thai-tourism-covid/index.html" class="no-external">Discovering Impact of COVID-19 on Thai Tourism Economy</a>
-</h3>
-<div class="listing-subtitle">
-<a href="./posts/thai-tourism-covid/index.html" class="no-external"></a>
-</div>
-<div class="listing-categories">
-<div class="listing-category" onclick="window.quartoListingCategory('R'); return false;">
-R
-</div>
-<div class="listing-category" onclick="window.quartoListingCategory('Geospatial Analysis'); return false;">
-Geospatial Analysis
-</div>
-<div class="listing-category" onclick="window.quartoListingCategory('Thailand'); return false;">
-Thailand
-</div>
-</div>
-<div class="listing-description">
-<a href="./posts/thai-tourism-covid/index.html" class="no-external">This is my second project (take home exercise) for our course Geospatial Analysis. This exercise makes use of techniques in geospatial analysis to discover clustering and…</a>
-</div>
-</div>
-<div class="metadata">
-<a href="./posts/thai-tourism-covid/index.html" class="no-external">
-<div class="listing-date">
-Nov 13, 2024
-</div>
-<div class="listing-author">
-Derek Rodriguez
-</div>
-</a>
-</div>
-</div>
-<div class="quarto-post image-right" data-index="3" data-categories="R,Geospatial Analysis,Tanzania" data-listing-date-sort="1731427200000" data-listing-file-modified-sort="1731499468637" data-listing-date-modified-sort="1731499468000" data-listing-reading-time-sort="63" data-listing-word-count-sort="12433">
-<div class="thumbnail">
-<p><a href="./posts/tz-fin-2023/index.html" class="no-external"></a></p><a href="./posts/tz-fin-2023/index.html" class="no-external">
-<p><img loading="lazy" src="./posts/tz-fin-2023/TZ-mobile-coeff.jpg" class="thumbnail-image"></p>
-</a><p><a href="./posts/tz-fin-2023/index.html" class="no-external"></a></p>
-</div>
-<div class="body">
-<h3 class="no-anchor listing-title">
-<a href="./posts/tz-fin-2023/index.html" class="no-external">Geographically Weighted Modeling of Financial Inclusion in Tanzania</a>
-</h3>
-<div class="listing-subtitle">
-<a href="./posts/tz-fin-2023/index.html" class="no-external"></a>
-</div>
-<div class="listing-categories">
-<div class="listing-category" onclick="window.quartoListingCategory('R'); return false;">
-R
-</div>
-<div class="listing-category" onclick="window.quartoListingCategory('Geospatial Analysis'); return false;">
-Geospatial Analysis
-</div>
-<div class="listing-category" onclick="window.quartoListingCategory('Tanzania'); return false;">
-Tanzania
-</div>
-</div>
-<div class="listing-description">
-<a href="./posts/tz-fin-2023/index.html" class="no-external">This was my final project for the course Geospatial Analysis. Here I looked at the information from FinscopeTanzania 2023 to model measures of financial inclusion both…</a>
-</div>
-</div>
-<div class="metadata">
-<a href="./posts/tz-fin-2023/index.html" class="no-external">
-<div class="listing-date">
-Nov 13, 2024
-</div>
-<div class="listing-author">
-Derek Rodriguez
-</div>
-</a>
-</div>
-</div>
-</div>
-<div class="listing-no-matching d-none">
-No matching items
-</div>
-</div></main> <!-- /main -->
+</main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
 window.document.addEventListener("DOMContentLoaded", function (event) {
   const toggleBodyColorMode = (bsSheetEl) => {
