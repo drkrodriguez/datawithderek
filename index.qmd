@@ -11,4 +11,4 @@ page-layout: full
 title-block-banner: true
 ---
 
-My personal projects and discoveries in data analytics.
+My blog with my personal projects and discoveries in data analytics.
