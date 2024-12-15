@@ -2,8 +2,8 @@
 title: "Identifying Crime Hotspots in LA"
 author: "Derek Rodriguez"
 date: "2024-12-15"
-categories: [R, Geospatial Analytics, USA, Los Angeles]
-image: "designeer-la-investigate.jpg"
+categories: [R, Geospatial Analysis, USA, Los Angeles]
+image: "designer-la-investigate.png"
 ---
 
 In this post, I look at reported crimes in LA (2020-2023) to see which areas have high and low incidence– which might be one way to gauge the level of safety in those areas. I will be using R, specifically the **tidyverse**, **sf**, **tmap**, **spatstat**, **sfdep** and **spdep** packages in this post.
