@@ -1,0 +1,828 @@
+---
+title: "Identifying Crime Hotspots in LA"
+author: "Derek Rodriguez"
+date: "2024-12-15"
+categories: [R, Geospatial Analytics, USA, Los Angeles]
+image: "designeer-la-investigate.jpg"
+---
+
+In this post, I look at reported crimes in LA (2020-2023) to see which areas have high and low incidence– which might be one way to gauge the level of safety in those areas. I will be using R, specifically the **tidyverse**, **sf**, **tmap**, **spatstat**, **sfdep** and **spdep** packages in this post.
+
+# Travelling Woes
+
+We will be travelling to LA for vacation in a little over a month, and it would be good to learn a bit more before we get there. As a foreigner and given everything that's happening in the US and in the world, I am quite concerned about my safety when visiting an unfamiliar place. Are there places that I need to avoid? Did we choose the right location for our hotel?
+
+In order to attempt to answer these questions myself, one dimension I can look at are the location of crimes in LA. Data from 2020 to date are available in the US open data website [data.gov](https://catalog.data.gov/dataset/crime-data-from-2020-to-present). The website warns of issues in January 2024 and a transition from March 2024, so we will just refer to pre-20024 data in this source.
+
+# LA Crimes 2020-2023
+
+I have downloaded the data from the website as a csv file, but other formats are available.
+
+## Importing and Transforming the Data
+
+The code chunk below loads **tidyverse** and then loads the csv into the object `la_crimes`. [**tidyverse**](https://www.tidyverse.org/) is a collection of multiple packages that are commonly used for data wrangling and cleaning.
+
+```{r}
+pacman::p_load(tidyverse)
+la_crimes <- read_csv("data/raw/Crime_Data_from_2020_to_Present.csv", show_col_types = FALSE)
+```
+
+The file contains 987K rows and 28 columns. We can check all column names using `colnames()`.
+
+```{r}
+colnames(la_crimes)
+```
+
+I am only concerned about the location of the crimes, the types of crimes, and the date (especially the year) the crimes were committed. I might also be interested in whether the crime happened indoors or outdoors. This means that I can just focus on five columns/variables– which I will define in an object `cols_to_keep` for easy selecting later. I will also be making the column names clearer by replacing them with the ones I am defining in `cols_newnames`.
+
+```{r}
+cols_to_keep <- c("DATE OCC", "Crm Cd Desc", "LAT", "LON", "Premis Desc")
+cols_newnames <- c("Date", "Crime Type", "latitude", "longitude", "Premise")
+```
+
+We can check the selected columns by using `head()` on a subset of the data.
+
+```{r}
+head(select(la_crimes, all_of(cols_to_keep)))
+```
+
+This shows that the date (`DATE OCC`) columns is currently a character string with the first portion being the date in US format. (i.e., month before day)
+
+In the following code chunk, we will reload the data and keep only the five columns using `select().` Changing the names can be done by assigning a list to `colnames()`. We then convert the `Date` column into the right type and then keep only records that happened before 2024.
+
+```{r}
+la_crimes <- read_csv("data/raw/Crime_Data_from_2020_to_Present.csv", show_col_types = FALSE) %>%
+  select(all_of(cols_to_keep)) #Keep five columns
+
+colnames(la_crimes) <- cols_newnames #Rename columns
+
+la_crimes$Date <- mdy_hms(la_crimes$Date) #Convert date column from string
+
+la_crimes <- la_crimes[la_crimes$Date < ymd("2024-01-01"),] #Keep only pre2024 data
+head(la_crimes)
+
+```
+
+The new object now has 867K rows and 5 columns, from the original 987K rows and 28 columns.
+
+I will also be adding a few date-derived columns to make the analyses easier later. These are done by the ccode chunk below for the year, the month and the day of the week.
+
+```{r}
+la_crimes$Year <- year(la_crimes$Date)
+la_crimes$Month <- month(la_crimes$Date, label = TRUE, abbr = FALSE)
+la_crimes$Day_of_Week <- wday(la_crimes$Date, label = TRUE, abbr = FALSE)
+```
+
+## Data Quality Checking
+
+I can perform a few data quality checks on the data that we have left– before I go into analyzing the data.
+
+One possible check is to see the range of the dates. Do they all fall between Jan 1st 2020 and Dec 31st 2023? Are there any invalid dates? `summary()` gives the range and quartiles so it can be used for displaying both the minimum and maximum. The function `is.na()` returns *TRUE* if a value is invalid.
+
+```{r}
+summary(as.Date(la_crimes$Date))
+
+sum(is.na(la_crimes$Date))
+```
+
+The output above shows that the dates are indeed between the beginning of 2020 to the end of 2023, and that there are no invalid dates.
+
+Another check that can be done is to check if there are any irregularities or errors in the string columns: `Crime Type` and `Premise`. I can first check the number of unique values that these two values contain using the function `n_distinct()`.
+
+```{r}
+n_distinct(la_crimes$'Crime Type')
+n_distinct(la_crimes$Premise)
+```
+
+There appears to be a very large number of entries for these two columns. The `unique()` function can show the unique values in a column. The code chunk below displays the unique values for `Crime Type` as a single string with entries separated by '//'
+
+```{r}
+print(paste(unique(la_crimes$'Crime Type'), collapse = " // "))
+```
+
+It shows a very diverse list of types of crimes. Some seem to be specific variants of certain crimes. It would have been great if I could consolidate this into a fewer number of types, but we can wait until we dive into the data to see if I can just focus on a few types to answer my questions.
+
+The code chunk below does the same and shows the unique values for `Premise`.
+
+```{r}
+print(paste(unique(la_crimes$Premise), collapse = " // "))
+```
+
+While this is a longer list, it looks like there are a lot more identifiable groups. I will attempt to reduce this into a smaller list of items which I will call as `Premise_Type`. The first step is to create the new column as a copy of `Premise`.
+
+```{r}
+la_crimes$'Premise_Type' <- la_crimes$Premise
+```
+
+My goal is primarily to make certain types of outdoor or public locations easier to find since these will be more relevant for me as a tourist.
+
+::: {panel-tabset}
+#### Consolidate MTA/Train
+
+I will be taking public transport during this upcoming trip so crimes that occur on trains and the stations are important.
+
+```{r}
+n_distinct(la_crimes$Premise_Type)
+
+la_crimes <- la_crimes %>% mutate(Premise_Type = if_else(str_detect(Premise_Type, "MTA"), "MTA/Train", Premise_Type))
+la_crimes <- la_crimes %>% mutate(Premise_Type = if_else(str_detect(Premise_Type, "LA UNION STATION"), "MTA/Train", Premise_Type))
+la_crimes <- la_crimes %>% mutate(Premise_Type = if_else(str_detect(Premise_Type, "TRAIN"), "MTA/Train", Premise_Type))
+
+n_distinct(la_crimes$Premise_Type)
+```
+
+#### Consolidate Bus / Bus Station
+
+For the same reason as trains, I will also be interested in crimes that occur in buses and bus stations.
+
+```{r}
+n_distinct(la_crimes$Premise_Type)
+
+la_crimes <- la_crimes %>% mutate(Premise_Type = if_else(str_detect(Premise_Type, "BUS"), "Bus (or Stop/Station)", Premise_Type))
+
+n_distinct(la_crimes$Premise_Type)
+```
+
+#### Consolidate Schools
+
+There are many premises that represent schools. While we are not going to visit any of these, consolidating them will make it easy to filter or pick them out when looking at results.
+
+```{r}
+n_distinct(la_crimes$Premise_Type)
+
+la_crimes <- la_crimes %>% mutate(Premise_Type = if_else(str_detect(Premise_Type, "SCHOOL"), "School", Premise_Type))
+la_crimes <- la_crimes %>% mutate(Premise_Type = if_else(str_detect(Premise_Type, "COLLEGE"), "School", Premise_Type))
+la_crimes <- la_crimes %>% mutate(Premise_Type = if_else(str_detect(Premise_Type, "DAY CARE"), "School", Premise_Type))
+la_crimes <- la_crimes %>% mutate(Premise_Type = if_else(str_detect(Premise_Type, "DORMITORY"), "School", Premise_Type))
+
+n_distinct(la_crimes$Premise_Type)
+```
+
+#### Consolidate Residential
+
+This will also make filtering out private residences-- as we do not have any plans to visit or stay residences other than our hotel.
+
+```{r}
+n_distinct(la_crimes$Premise_Type)
+
+la_crimes <- la_crimes %>% mutate(Premise_Type = if_else(str_detect(Premise_Type, "DWELLING"), "Residential", Premise_Type))
+la_crimes <- la_crimes %>% mutate(Premise_Type = if_else(str_detect(Premise_Type, "CONDO"), "Residential", Premise_Type))
+la_crimes <- la_crimes %>% mutate(Premise_Type = if_else(str_detect(Premise_Type, "RESIDENTIAL"), "Residential", Premise_Type))
+la_crimes <- la_crimes %>% mutate(Premise_Type = if_else(str_detect(Premise_Type, "RESIDENCE"), "Residential", Premise_Type))
+la_crimes <- la_crimes %>% mutate(Premise_Type = if_else(str_detect(Premise_Type, "MOBILE HOME"), "Residential", Premise_Type))
+
+n_distinct(la_crimes$Premise_Type)
+```
+:::
+
+## Exploratory Data Analysis
+
+I will perform some EDA or exploratory data analysis even before bringing in the geospatial data. The charts generated will be from **ggplot** which is already included in **tidyverse**. (so there is no need to import the package)
+
+### Number of Crimes Over Time (Total)
+
+I first want to see whether there are trends or seasonality in the occurrence of crimes overall. The code below produces a bar chart for the total number of crimes recorded per year.
+
+```{r}
+chart_data <- la_crimes %>%
+    group_by(Year) %>%
+    summarise(count = round(n()/1000,1), .groups = 'drop')
+
+ggplot(chart_data, aes(x = factor(Year), y = count)) +
+    geom_bar(stat = "identity", fill = "skyblue") +
+    geom_text(aes(label = count), vjust = -0.5, size = 3.5) +
+    labs(title = "Number of Crimes Recorded by Year (Thousands)", x = "Year") +
+    theme_minimal() +
+    theme(
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()
+    )
+
+
+```
+
+The chart shows that, with the exception of 2021, there were between 230K and 255K crimes reported per year in LA. The number of crimes reported in 2021 deviates with only 146K crimes reported.
+
+I can also look at any seasonality across the different years. The code chunk below creates a line chart which shows the number of crimes recorded per month.
+
+```{r}
+chart_data <- la_crimes %>%
+  group_by(Year, Month) %>%
+  summarise(count = n(), .groups = 'drop')
+
+ggplot(chart_data, aes(x = Month, y = count, color = factor(Year), group = Year)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Number of Crimes Recorded by Month", x = "Month", y = "Number of Crimes", color = "Year") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major.x = element_blank())
+```
+
+Visually, the only recurring pattern I see is for the period from August to December where there is an alternate drop and rise. October is the month with the highest number of reported crimes in 2022 and 2023.
+
+### Number of Crimes By Type
+
+The code below produces a table to show the top 20 crime types over the four year period based on the number of reports. As some of the descriptions are very long, I opted for a table than a chart to make sure they are all readable.
+
+```{r}
+chart_data <- count(la_crimes, `Crime Type`) %>%
+  arrange(desc(n)) %>%
+  mutate(
+        Percentage = n / sum(n) * 100,
+        Running_Total_Percentage = cumsum(n / sum(n) * 100)
+    ) %>%
+  slice_head(n = 20)
+
+chart_data <- chart_data %>%
+    rename(
+        `Number of Records` = n,
+        `Percentage of Total` = Percentage,
+        `Running Total Percentage` = Running_Total_Percentage
+    )
+
+print(chart_data)
+```
+
+The table shows that the top type reported is from stolen vehicles, followed by battery and identity theft. These three collectively make up 25% of all the reports. While a tourist like me might not be at risk of the first type, witnessing or being in the vicinity of a vehicle being stolen is still something I want to avoid. The location of the crimes, are then probably more important for someone like me.
+
+### Number of Crimes By Premise
+
+The code below creates a similar table which shows the number of reports by `Premise_Type`.
+
+```{r}
+chart_data <- count(la_crimes, `Premise_Type`) %>%
+  arrange(desc(n)) %>%
+  mutate(
+        Percentage = n / sum(n) * 100,
+        Running_Total_Percentage = cumsum(n / sum(n) * 100)
+    )
+
+chart_data <- chart_data %>%
+    rename(
+        `Number of Records` = n,
+        `Percentage of Total` = Percentage,
+        `Running Total Percentage` = Running_Total_Percentage
+    )
+
+print(chart_data)
+```
+
+The largest portion of reports makes up 31% of the total and are from residential premises. These are not very concerning for me as there is little chance that I will be exposed to these types of crime as a tourist who is only checked into a hotel. The same is true for any other location which is not public or in a hotel.
+
+I can create a subset of the data to only include those that happened in public by removing the ones that I think happen in private. I define a list of values `private` to exclude and then use `filter()` to remove them in the code chunk below. The list is not comprehensive but should at least exclude the top ones that are in premises that a tourist like myself will not encounter.
+
+```{r}
+private <- c("Residential", "GARAGE/CARPORT", "OFFICE BUILDING/OFFICE",
+             "WAREHOUSE", "CONSTRUCTION SITE", "MAIL BOX", "STORAGE SHED",
+             "MEDICAL/DENTAL OFFICES", "MISSIONS/SHELTERS", "TRANSIENT ENCAMPMENT",
+             "GROUP HOME", "PROJECT/TENEMENT/PUBLIC HOUSING",
+             "DETENTION/JAIL FACILITY", "MANUFACTURING COMPANY",
+             "SHORT-TERM VACATION RENTAL", "FOSTER HOME BOYS OR GIRLS*",
+             "WATER FACILITY", "HOSPICE", "GARMENT MANUFACTURER",
+             "RETIRED (DUPLICATE) DO NOT USE THIS CODE")
+
+la_crimes_public <- la_crimes %>%
+    filter(!Premise_Type %in% private)
+
+# Display the resulting dataframe
+head(la_crimes_public)
+
+```
+
+### Number of Crimes - Public
+
+I now want to rerun some of the earlier charts with this new dataset. Will I see the same trends and top types of crimes for just the 'public' ones?
+
+The code below recreates the number of crimes reported by month.
+
+```{r}
+chart_data <- la_crimes_public %>%
+  group_by(Year, Month) %>%
+  summarise(count = n(), .groups = 'drop')
+
+ggplot(chart_data, aes(x = Month, y = count, color = factor(Year), group = Year)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Number of Public Crimes Recorded by Month", x = "Month", y = "Number of Crimes", color = "Year") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major.x = element_blank())
+```
+
+There is no big difference in the distribution of the crimes across years or months. I can still see some alternating in the latter part of the year and the three years still appear to have very similar number of crimes reported.
+
+The code below then recreates the number of reports by the type of crime.
+
+```{r}
+chart_data <- count(la_crimes_public, `Crime Type`) %>%
+  arrange(desc(n)) %>%
+  mutate(
+        Percentage = n / sum(n) * 100,
+        Running_Total_Percentage = cumsum(n / sum(n) * 100)
+    ) %>%
+  slice_head(n = 20)
+
+chart_data <- chart_data %>%
+    rename(
+        `Number of Records` = n,
+        `Percentage of Total` = Percentage,
+        `Running Total Percentage` = Running_Total_Percentage
+    )
+
+print(chart_data)
+```
+
+Stolen vehicles still appear as the top type of crime, but we don't see identity theft follow it anymore. Burglary from vehicles and battery follow as the second and third most frequent type of crime reported.
+
+Moving forward, I would want to limit the analysis to 2023, or the most recent full year. This limits the amount of data I need to run, and should not be an issue since it is the most updated, and there is no big deviation from the two other years. (not counting 2021)
+
+The code below keeps only the records with a `Year` of 2023 in `la_crimes_public`
+
+```{r}
+la_crimes_public <- la_crimes_public[la_crimes_public$Year == 2023, ]
+```
+
+# Importing the LA Map
+
+In order to visualize in a map and apply techniques we need to bring in the geospatial data. I have taken the district level map from the [LA County website](https://redistricting.lacounty.gov/mapping-files-data-download/). The following code loads the **sf** package and then imports the map in shapefile format into r using using `st_read()`. [sf](https://cran.r-project.org/web/packages/sf/index.html) is the package to import and work with sf or simple features objects in R for geospatial operations.
+
+```{r}
+pacman::p_load(sf)
+
+la_district <- st_read(dsn = "data/geospatial", layer="LA_City_Council_Districts")
+```
+
+The output shows that there are 15 features, or districts, in the object and are of the polygon type. We can use `st_crs()` to display information on the crs or coordinate reference systems of the object.
+
+```{r}
+st_crs(la_district)
+```
+
+The output shows that the object is based on EPSG 2229, which is a valid system, however it is using empirical units. We can project it to a different CRS, EPSG 3310, which is using meters, by using `st_transform()`.
+
+```{r}
+la_district <- st_read(dsn = "data/geospatial", layer="LA_City_Council_Districts") %>%
+  st_transform(3310)
+```
+
+Geospatial data can be visualized as maps using the [**tmap**](https://cran.r-project.org/web/packages/tmap/vignettes/tmap-getstarted.html) package. I use `qtm()` below to quickly visualize the contents of `la_district`.
+
+```{r}
+pacman::p_load(tmap)
+
+qtm(la_district)
+```
+
+# Converting Report Locations to sf Format
+
+The crime data cannot be used directly with the map data since it is still not in the right ***sf*** format. This can be done by using `st_as_sf()` and passing the coordinates into the `coords` argument. The first EPSG or CRS code assigned is 4326 which is WGS 84 or a geodetic system in order to accept the degree coordinates. The code chunk ends in assigning the same CRS code of 3310 which was used earlier for the district map.
+
+```{r}
+la_crimes_sf <- select(la_crimes_public, c("Crime Type", "Month", "Day_of_Week",
+                                          "latitude", "longitude")) %>%
+  st_as_sf(coords = c("longitude", "latitude"),
+                       crs=4326) %>%
+  st_transform(crs = 3310)
+```
+
+In order to visualize these in the district map, we can add individual elements as layers with tmap using `tm_shape()`. The first layer will be the district map followed by the crime locations. Colors can be defined for elements of each layer. I added an `alpha` argument to the crime locations so they have some transparency and will give some relative idea of the density.
+
+```{r}
+tm_shape(la_district) +
+  tm_borders("black") +
+tm_shape(la_crimes_sf) +
+  tm_dots("red", alpha = 0.1)
+```
+
+There are clearly some areas which have a lot more crimes than others. Unfortunately, I am not familiar with the locations in LA, and I am not sure in which district the hotel we are staying is. I have defined a variable `hotel` which contains our Downtown LA hotel location based on its coordinates and then converted to sf.
+
+```{r, echo=FALSE}
+hotel <- data.frame(latitude = 34.04399,
+                    longitude = -118.25769)
+
+hotel <- st_as_sf(hotel, coords = c("longitude", "latitude"),
+                       crs=4326) %>%
+  st_transform(crs = 3310)
+```
+
+I can then find the district that this point location is in with by using `st_contains()`. The `sparse` argument instructs the function to return TRUE or FALSE rather than a list.
+
+```{r}
+hotel_dist <- la_district[st_contains(la_district, hotel, sparse = FALSE),]
+```
+
+I can now redraw the map to highlight the district of our hotel. In the code below, I add it as a layer with a green border or outline.
+
+```{r}
+tm_shape(la_district) +
+  tm_borders("black") +
+tm_shape(la_crimes_sf) +
+  tm_dots("red", alpha = 0.1) +
+tm_shape(hotel_dist) +
+  tm_borders("green")
+```
+
+Our downtown hotel, unsurprisingly, is in one of the districts that have a high number of crimes. It is hard to pinpoint which area in the district has the ighest incidence of reports, and whether the district has a higher or a lower number
+
+While the previous visual display already gives us an idea of the density of crime reports, it is hard to tell objectively where there are high or low incidence of (public) crimes, but there are some techniques that can. In this post, I will use a few and see if they are telling me the same thing and if I should be more careful when stepping out of our hotel:
+
+1.  Simple density calculation
+
+2.  KDE or Kernel Density Estimation
+
+3.  Using LISA or local indicators of spatial association
+
+# Visualizing Using (Simple) Density
+
+One way to describe how crime-prone an area is to just count the number of crimes reported in that area. The code below uses `st_intersects()` to check which crimes are reported in each district and uses `lengths()` to count the number and store it in a new column called `Crimes`.
+
+```{r}
+la_district$Crimes <- lengths(st_intersects(la_district, la_crimes_sf))
+head(la_district)
+```
+
+We can visualize this in a map by using the counts as a parameter for the fill of the districts.
+
+```{r}
+tm_shape(la_district) +
+  tm_borders("black") +
+  tm_fill('Crimes') +
+tm_shape(hotel_dist) +
+  tm_borders("green") +
+tm_layout(main.title.size = 1, main.title = "2023 Crimes Per District", legend.width = 5)
+```
+
+The district where the hotel is in still does appear to be the one with the highest number of reported crimes in 2023. The district level might be too high though so I would want to look at a lower level to see if it is still the case when we look deeper.
+
+I have downloaded the neighborhood council maps from the same source. I then import it into R and also located our hotel in the same using the code below.
+
+```{r}
+la_nbhood <- st_read(dsn = "data/geospatial", layer="LA_City_Neighborhood_Councils") %>%
+  st_transform(3310) %>%
+  st_crop(st_bbox(la_district))
+
+hotel_nbhood <- la_nbhood[st_contains(la_nbhood, hotel, sparse = FALSE),]
+
+tm_shape(la_nbhood) +
+  tm_borders("black") +
+tm_shape(hotel_nbhood) +
+  tm_fill("green")
+```
+
+I then count the number of crimes per neighborhood (council) using the same approach earlier. Note that since we are checking with points in polygons, `st_intersects()` can actually be replaced with `st_contains()`.
+
+```{r}
+la_nbhood$Crimes <- lengths(st_intersects(la_nbhood, la_crimes_sf))
+```
+
+To visualize the counts in a map, we can again use the tmap function and just pass the neighborhood-level data instead of the district-level ones.
+
+```{r}
+tm_shape(la_nbhood) +
+  tm_borders("black") +
+  tm_fill('Crimes') +
+tm_shape(hotel_nbhood) +
+  tm_borders("green") +
+tm_layout(main.title.size = 1, main.title = "2023 Crimes Per Neighborhood", legend.width = 5)
+```
+
+At the neighborhood level, our hotel still does appear to be in the most dense in terms of the number of crimes reported. For the other neighborhoods in LA, it is hard to see which one comes next, and just looking at the number of reports might be misleading as different neighborhoods have different sizes or land areas. Looking at the density might be more appropriate.
+
+To compute for the density, I first need to get the area of each neighborhood. While there is a `Shape_Area` column in there, I am not sure about its accuracy or its units. It is better to compute the area myself. I can do this by simply using `st_area()` on the sf object.
+
+```{r}
+la_nbhood$AREA <- st_area(la_nbhood)
+```
+
+As the projection system is in meters, the areas computed should be in $m^2$. To get the density, I just need to divide the number of crimes with these areas. The resulting number is expected to be very small if it is presented as the number of crimes per square meter. As the units is being included as an attribute, we load the **units** package in order to be able to do the conversion and keep it consistent with the displayed units. The last line converts the units from "1/m\^2" to "1/km\^2" which means the original values were multiplied by a factor of a million.
+
+```{r}
+la_nbhood$crime_density <- la_nbhood$Crimes / la_nbhood$AREA
+
+pacman::p_load(units)
+
+la_nbhood$crime_density <- set_units(la_nbhood$crime_density, "1/km^2", mode = "standard")
+```
+
+I can now use this new column to generate the plot of the density.
+
+```{r}
+tm_shape(la_nbhood) +
+  tm_borders("black") +
+  tm_fill('crime_density', title = "Crimes Per Sq Km") +
+tm_shape(hotel_nbhood) +
+  tm_borders("green") +
+tm_layout(main.title.size = 1, main.title = "Density of 2023 Crime Reports", legend.width = 5)
+```
+
+This updated chart shows that there is another neighborhood with the highest density (at least 1000 reports per square kilometer) followed by a handful of neighborhoods with 500-1000 reports per sq km. Every other neighborhood has a density of less than 500 per square km.
+
+While this is good, I don't want to see 90 neighborhoods in a single group. tmap allows the user to adjust the way that groups or classes are defined by using the `style` argument. One possible argument value is "quantile" which splits the data into 5 groups with the same number of elements.
+
+```{r}
+tm_shape(la_nbhood) +
+  tm_borders("black") +
+  tm_fill('crime_density', title = "Crimes Per Sq Km", style = "quantile", palette = "Reds") +
+tm_shape(hotel_nbhood) +
+  tm_borders("green") +
+tm_layout(main.title.size = 1, main.title = "Density of 2023 Crime Reports", legend.width = 5)
+```
+
+It is now easier to see which neighborhoods are in the top or bottom 20%, which are roughly 20 neighborhoods each as there are 99 neighborhoods in the dataset.
+
+We can further improve the map and make it easier to interpret by making it interactive my setting the mode to "view". I have also added an `id` argument to the fill element so they display the neighborhood names when moused over.
+
+```{r}
+tmap_mode("view")
+
+tm_shape(la_nbhood) +
+  tm_borders("black") +
+  tm_fill('crime_density', id = "name", title = "Crimes Per Sq Km", style = "quantile", palette = "Reds") +
+tm_shape(hotel_nbhood) +
+  tm_borders("green")
+
+tmap_mode("plot")
+```
+
+Again, Downtown LA is in the top 20% of the neighborhoods. The interactive map also lets me see that the small neighborhood beside Downtown LA-- Westlake South, was the one with the highest density at 1423 crimes reported per square kilometer. I am also able to see the names of the neighborhoods with the lowest densities like Coastal San Pedro and Wilmington in the south.
+
+# Visualizing Using KDE
+
+While the density approach produced some good visualizations, it's dependent on the partitioning used and only describes the data in the confines of those partitions. The partitions might also not represent the true distribution of the data.
+
+An approach that I can take is by using **KDE** or **kernel density estimation** instead. In very simple terms, KDE with geospatial point data tries to model the number of points, events, or, in our case, crime reports that are within range of every point within the 'map' or study area. The range is referred to as the bandwidth and can either be a fixed number of a dynamic or adaptive one. Based on this definition, it also implies that the densities computed will be over overlapping areas since a single event will be in range of all the other (infinite) points within its range.
+
+In R, KDE can be performed using functions from the [**spatstat**](https://spatstat.org/) package.
+
+```{r}
+pacman::p_load(spatstat)
+```
+
+## Removing Duplicates
+
+Before proceeding, I need to check that there are no duplicated points in the data as some of the functions do not work in their presence. If there are duplicates, then some transformation is needed to make the data fit for use.
+
+The check can be done using the `duplicated()` function and it needs to be done at the geometry or location of the points.
+
+```{r}
+any(duplicated(la_crimes_sf$geometry))
+```
+
+The output shows that there is indeed some duplication in the point locations. We can introduce 'jitter' or a small random shift in order to ensure that points do not occupy the same space. For sf objects, this can be done with the st_jitter() function where an amount can be specified for the range of jitter to be introduced.
+
+```{r}
+la_crimes_jitt <- st_jitter(la_crimes_sf$geometry, 5)
+```
+
+We can doublecheck that there is no more duplication using the same function. Note that the new object la_crimes_jitt only contains the geometry or the points, so we can pass the whole object into `duplicated()`.
+
+```{r}
+any(duplicated(la_crimes_jitt))
+```
+
+## Data Transformations for KDE
+
+Additional data transformations are required as spatstat does not directly work with sf objects. One option is to use the ppp format. Converting the crime report data to this format takes a few steps.
+
+The first step is to create an owin object of the map of LA which defines the geographic boundaries. This is done by passing the boundaries into `as.owin()`. As the boundaries are required, we can use a function like `st_union()` to ensure only one object's boundaries are defined.
+
+```{r}
+la_owin <- as.owin(st_union(st_geometry(la_district)))
+
+plot(la_owin)
+```
+
+The next code chunk completes the transformation by converting the crime locations into a ppp object using `as.ppp()` and then combining it with the owin using the second line of code.
+
+```{r}
+la_crimes_ppp <- as.ppp(la_crimes_jitt)
+la_crimes_ppp <- la_crimes_ppp[la_owin]
+
+plot(la_crimes_ppp)
+```
+
+If we use the data as is, we will see that all the units will be based on meters, which means that density values will be very small. We can convert the distance units to kilometers using `rescale.ppp()` and pass in a factor of 1000 as a parameter.
+
+```{r}
+la_crimes_ppp <- rescale.ppp(la_crimes_ppp, 1000, "km")
+```
+
+## KDE with Fixed Bandwidth
+
+The KDE can be computed using the `density()` function. This is specifically for computing the KDE where the is a user fixed bandwidth. This bandwidth is passed into the `sigma` argument of the function. There are a number of other possible arguments, but I am just using two of these in the upcoming code chunk:
+
+1.  The `edge` argument indicates whether edge correction is applied.
+
+2.  The `kernel` argument specifies the smoothing kernel, or the function used to smooth out and interpolate the density values. The process will only compute for the density of existing points, so there needs to be a way to calculate the density in between. The most common method used is gaussian which represents a normal curve.
+
+The code chunks below compute the KDE for four different bandwidths and then produces the plots by passing them into the `plot()` function.
+
+::: {panel-tabset}
+#### BW = 250m
+
+```{r}
+kde_la_crimes_250m <- density(la_crimes_ppp,
+                         sigma = 0.25,
+                         edge = TRUE,
+                         kernel = "gaussian")
+plot(kde_la_crimes_250m, main = "KDE with 250m bandwidth")
+```
+
+#### BW = 500m
+
+```{r}
+kde_la_crimes_500m <- density(la_crimes_ppp,
+                         sigma = 0.5,
+                         edge = TRUE,
+                         kernel = "gaussian")
+plot(kde_la_crimes_500m, main = "KDE with 500m bandwidth")
+```
+
+#### BW = 1km
+
+```{r}
+kde_la_crimes_1km <- density(la_crimes_ppp,
+                         sigma = 1,
+                         edge = TRUE,
+                         kernel = "gaussian")
+plot(kde_la_crimes_1km, main = "KDE with 1km bandwidth")
+```
+
+#### BW = 5km
+
+```{r}
+kde_la_crimes_5km <- density(la_crimes_ppp,
+                         sigma = 5,
+                         edge = TRUE,
+                         kernel = "gaussian")
+plot(kde_la_crimes_5km, main = "KDE with 5km bandwidth")
+```
+:::
+
+The plots continue to show that the area around downtown LA has the highest density. The largest bandwidth produces a very smooth gradient which is not useful for identifying specific locations as hotspots. The lower bandwidths are more useful in this purpose.
+
+These charts continue to show that the central area, including Downtown LA, is where the crime reports are most concentrated. There are a few spots in the north which have high incidence of reports, but most of the northern part is generally the least dense in terms of the number of crime reports.
+
+Note that there are more formal or scientific methods to determine the ideal bandwidth, but I will not cover them in this post.
+
+## KDE with Adaptive Bandwidth
+
+The downside of using a fixed bandwidth is that it might make it hard to see variations where points are dense, while making it produce large variances where points are scarce. An adaptive bandwidth can solve this downside as it adjusts the bandwidth used depending on the density of the points in the region.
+
+The KDE with adaptive bandwidth can be computed by using `adaptive.density()`. The `method` argument specifies the estimation method used and can take on one of three values: "kernel", "voronoi" or "nearest".
+
+```{r, eval=FALSE}
+kde_la_crimes_adaptive <- adaptive.density(la_crimes_ppp, method = "kernel")
+```
+
+```{r, eval=FALSE}
+write_rds(kde_la_crimes_adaptive, "data/rds/kde_la_crimes_adaptive.rds")
+```
+
+```{r, echo=FALSE}
+kde_la_crimes_adaptive <- read_rds("data/rds/kde_la_crimes_adaptive.rds")
+```
+
+```{r, fig.width=15}
+plot(kde_la_crimes_adaptive, main = "KDE with Adaptive bandwidth")
+```
+
+The output continues to highlight downtown LA as a hotspot, but also produced some hotspots scattered across the map which can be thought of as local hotspots.
+
+# Visualizing Using LISA
+
+The last option I will explore in this post is the use of LISA or local indicators of spatial association, specifically Moran's I. Spatial association or autocorrelation describes whether there is a systemic variation over space for a variable. Tests can be done to conclude whether there is (statistically relevant) clustering or dispersion for a variable. These tests and statistics can be computed at a global or local level.
+
+The local tests and methods can also be used to classify hotspots and outliers in the data– which is something that could help me answer the main problem.
+
+I will be using the [**sfdep**](https://josiahparry.com/projects/pkgs/sfdep.html) package to perform most of the steps here.
+
+```{r}
+pacman::p_load(sfdep)
+```
+
+One thing to note is that the method that will be used will be using attributes rather than point data. This means that it will be more similar to the first method (density by neighborhood, in terms of the visualization) than the second one. (KDE)
+
+I will be using the neigborhood level density of crime reports for this approach.
+
+## Deriving Weights
+
+Instead of just looking at each cells' or objects value, spatial autocorrelation looks at that object together with its neighbors. The 'value' of a cell is then an average, sum or some combination of its and its neighbors' values depending on the weights.
+
+The first step is deriving the list of neighbors per neighborhood. If we observe the map, we see that some of the borders overlap and some of the borders don't even touch. This makes the use of functions like `st_contiguity()`, which derives a list of neighbors based on adjacency, infeasible without cleaning up the data.
+
+```{r}
+tmap_mode("view")
+
+tm_shape(la_nbhood) +
+  tm_borders("black") +
+  tm_fill("lightblue") +
+tm_shape(hotel_nbhood) +
+  tm_fill("green")
+
+tmap_mode("plot")
+```
+
+Instead of using contiguity, we will use distance to determine the list of neighbors. The first step is to determine the ideal distance to use. This ideal distance should ensure that each neighborhood has a neighbor.
+
+```{r}
+la_nbhood_poly <- st_cast(la_nbhood, "POLYGON")
+
+centroid_x <- map_dbl(la_nbhood_poly$geometry, ~st_centroid(.x)[[1]])
+centroid_y <- map_dbl(la_nbhood_poly$geometry, ~st_centroid(.x)[[2]])
+coords <- cbind(centroid_x, centroid_y)
+head(coords)
+```
+
+Next, I need to find the distance of each neighborhood to its nearest neighbors– which does not necessarily require them to be touching on the map. For this, I would need functions from the [**spdep**](https://cran.r-project.org/web/packages/spdep/index.html) package. The code below goes through the following:
+
+1.  I look for each neighborhood's nearest neighbors using `knearneigh()`. The output is converted into a neighbor class, nb, using `knn2nb()`
+
+2.  Return the distance to a neighbor using `nbdists()`
+
+```{r}
+pacman::p_load(spdep)
+
+k1 <- knn2nb(knearneigh(coords))
+k1dists <- unlist(nbdists(k1, coords))
+summary(k1dists)
+```
+
+The output shows that the largest distance to a neighbor is 6088.8, which means that a distance of at least that number should ensure that each neighborhood will find at least one neighbor. I will use 6090.
+
+To return a list of distance based neighbors, I use `st_dist_band()` in the code chunk below. This needs to be applied to the centroids so I create a new object for the neighborhood centroids and then define a range of 0 to 6090 meters for the neighbors.
+
+```{r}
+la_nbhood_centroids <- st_centroid(la_nbhood)
+
+la_nbhood_centroids$nb <- st_dist_band(la_nbhood_centroids,
+                                       lower = 0,
+                                       upper = 6090)
+```
+
+The next step is to assign weights which can be done using `st_weights()`. It requires a neighbor list as an input and then I have used "W" as an input to the `style` argument to specify equal weights to be used.
+
+```{r}
+la_nbhood_centroids$wt <- st_weights(la_nbhood_centroids$nb, style = "W")
+```
+
+## Performing Local Moran's I Test
+
+I will be using Moran's I as the local statistic to be used which is useful for identifying outliers and clusters. This can be done using the `local_moran()` function of **sfdep**. The function needs three required arguments, the values to be used, the neighbor list and the weights. The `nsim` argument instructs the test to perform a number of simulations. I defined a seed value at the top of the block in order to make sure I am able to reproduce the results.
+
+```{r}
+set.seed(1234)
+
+la_nbhood_centroids <- la_nbhood_centroids %>%
+  mutate(local_moran = local_moran(
+    Crimes, nb, wt, nsim = 99),
+    .before = 1) %>%
+  unnest(local_moran)
+```
+
+Note that the dataframe used does not contain the actual neighborhood maps so it is not suitable for mapping. We can transfer the results, which are in the first 11 columns of the output, into the original neighborhood map using the following code.
+
+```{r}
+results <- as.data.frame(la_nbhood_centroids)[1:11]
+la_nbhood_moran <- bind_cols(la_nbhood, results)
+```
+
+## Visualising Local Indicators
+
+We can visualize the results by using the tmap package. The test statistic is stored in the column `ii` while the p values for the simulations are stored in `p_ii_sim`. In general, values above zero for the test statistics indicate clustering while those below indicate dispersion.
+
+```{r}
+tm_shape(la_nbhood_moran) +
+  tm_fill(c("ii", "p_ii_sim"), title = c("Local Moran's I","P Value")) +
+  tm_borders(alpha = 0.5) +
+  tm_view(set.zoom.limits = c(6,8)) +
+  tm_layout(
+    main.title = "Local Moran's I and P-values",
+    legend.position = c("left", "bottom"))
+```
+
+One useful output of `local_moran()` is the classification of elements. One is stored in the column `mean`. This classifies clusters and outliers and indicates whether they have high values or low. Note that these classifications are available for all elements regardless of whether the test finds them being significant.
+
+The code chunk below produces an interactive map that shows the classifications for the neighborhoods where the p-value is less than 5%. The classification indicates clusters as "Low-Low" or "High-High", while the two other classifications for outliers. Where there is a high valued neighborhood among low valued ones, it will show as "High-Low". For the reverse, it will show "Low-High".
+
+```{r}
+la_nbhood_moran_sig <- la_nbhood_moran %>%
+  filter(p_ii < 0.05)
+
+tmap_mode("view")
+tm_shape(la_nbhood_moran) +
+  tm_polygons(id = "name") +
+  tm_borders(alpha = 0.5) +
+tm_shape(la_nbhood_moran_sig) +
+  tm_fill("mean", id = "name") +
+  tm_borders(alpha = 0.4)
+tmap_mode("plot")
+```
+
+The results show that there is a statistically significant cluster of with high crime report density– again with Downtown LA. There are four outliers identified around this cluster's borders. There is also a significant low density cluster of neighborhoods a little north of the high density cluster.
+
+# What do I do now?
+
+It appears that no matter how I look at it, Downtown LA and its surroundings have the highest density of crime reports. This doesn't necessarily mean that is is unsafe to step out of the hotel, it just means that there were more crimes reported. It is also not surprising since these are also the densest areas in terms of the number of people. Regardless of what I see here, we will still go ahead with our hotel booking since it's fully paid already. XD

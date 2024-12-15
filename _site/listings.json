@@ -2,6 +2,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/la-crimes/index.html",
       "/posts/starting-linear-programming-in-python/index.html",
       "/posts/creating-diagonal-reference-lines-2024/index.html",
       "/posts/atraxa-edh-with-mba/index.html",
