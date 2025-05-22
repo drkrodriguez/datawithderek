@@ -1,0 +1,427 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "---\n",
+        "title: \"Tracking Commander Deck Builds in PowerBI - Part I\"\n",
+        "author: \"Derek Rodriguez\"\n",
+        "date: \"2025-04-29\"\n",
+        "categories: [Python, PowerBI, Web Scraping, MTG]\n",
+        "image: \"edh-tracker-1.jpg\"\n",
+        "---\n",
+        "\n",
+        "\n",
+        "I start building a PowerBI report, or a tracker, to monitor changes to user-submitted decks in [EDHREC](https://edhrec.com/) to see if there are any changes to how players build their decks, if any cards are becoming popular for certain builds, or if some cards are getting out of favor, or outclassed in some builds.\n",
+        "\n",
+        "For this post, I focus on getting the necessary data out of EDHREC using web-scraping packages in Python. As the intent is to monitor changes or trends, there will be little analysis possible in this post, so I will be adding these in as I collect more data in the coming months.\n",
+        "\n",
+        "# A Quick Aside\n",
+        "\n",
+        "It's been four months since my last post, since it's been quite busy early this year. We went on vacation for a few weeks in North America, and I spent some time with my brother as he was visiting us here in Southeast Asia.\n",
+        "\n",
+        "While I have not created any new posts, I have made sure to make some time for my learning, which included getting some of my certifications updated. I have a few mini-projects in mind, so I am hoping to get back on track and share more regularly again.\n",
+        "\n",
+        "# Introduction\n",
+        "\n",
+        "I have an earlier post that introduces the game and the Commander format, so for those who are unfamiliar and want to get a quick background, feel free to read through the \"Introduction\" of this [post](https://datawithderek.netlify.app/posts/atraxa-edh-with-mba/).\n",
+        "\n",
+        "Given the 100-card nature of the format, the large player base, and the large number of new cards released regularly, there are frequent changes in the format in terms of new cards entering deck builds.\n",
+        "\n",
+        "The most popular resource for players of the format is [EDHREC](https://edhrec.com/). It compiles deck data from multiple sources and gives a summary of the popular builds and cards used for specific decks or commanders.\n",
+        "\n",
+        "For my report, I want to leverage the EDHREC data and use it to monitor a subset of decks or a subset of commanders. EDHREC will provide the latest statistics, but I want to keep track of historic stats so I can spot trends that I can probably use to fine-tune decks or identify cards or strategies (for that commander) that have been, or might get more popular.\n",
+        "\n",
+        "Below is a sneak preview of the finished (first version) of the tracker:\n",
+        "\n",
+        "\n",
+        "{{< video https://www.youtube.com/embed/7aKtT_lLgXA?si=MLGa0rn1L_Dzzvi8 >}}\n",
+        "\n",
+        "\n",
+        "# Extracting Data from EDHREC\n",
+        "\n",
+        "With the exception of a list of commanders and the links or URLs to their respective EDHREC pages, all the data I need from the tracker will come from EDHREC. I have used Python to extract the data, and this is done in two major steps:\n",
+        "\n",
+        "1.  Extracting the list of cards and statistics for each commander in my list\n",
+        "\n",
+        "2.  Extracting the card image URLs for each card, since they were not accessible in the previous step\n",
+        "\n",
+        "Each of these steps will be done in separate Python scripts. The extracted data will then be saved in CSV files that will be used to feed the report in PowerBI.\n",
+        "\n",
+        "The sections below go through the relevant parts of the final code for each of these, which were built with the help of Copilot. A link is included at the end of each section if the reader would like to access the full code for that step.\n",
+        "\n",
+        "## Extracting Commander Card Lists\n",
+        "\n",
+        "There are six packages used in the final code for this step:\n",
+        "\n",
+        "-   [requests](https://pypi.org/project/requests/) - package for making HTML requests, and is the basic package used for web scraping\n",
+        "\n",
+        "-   [json](https://docs.python.org/3/library/json.html) - used for working with the JSON format, which is essential since the information I need is contained in a section in the code in this format\n",
+        "\n",
+        "-   [pandas](https://pandas.pydata.org/) - used for working with dataframes, which is the structure used to store the data that is read from or written to the file\n",
+        "\n",
+        "-   [os](https://docs.python.org/3/library/os.html) - the package is used in this code to specifically check whether a file or a path exists\n",
+        "\n",
+        "-   [re](https://docs.python.org/3/library/re.html) - regular expressions are used in the code to identify string patterns in the code with the required information\n",
+        "\n",
+        "-   [datetime](https://docs.python.org/3/library/datetime.html) - this package will be used to timestamp the information from EDHREC so we can observe trends or refer to a specific date when using the tracker\n"
+      ],
+      "id": "36336d1c"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "EVAL": false
+      },
+      "source": [
+        "import requests\n",
+        "import json\n",
+        "import pandas as pd\n",
+        "import os\n",
+        "import re\n",
+        "from datetime import datetime"
+      ],
+      "id": "17f0acfe",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "The code utilizes a list of commanders stored in a CSV. It currently includes three columns:\n",
+        "\n",
+        "-   `Commander` - the name of the commander\n",
+        "\n",
+        "-   `url` - the URL of the EDHREC commander page, which contains the list of cards and statistics\n",
+        "\n",
+        "-   `Image` - the URL of the card image of that commander\n",
+        "\n",
+        "-   `Colors` - the commanders will be categorized using their \"color\". This will be a way to filter the commanders and make selections in the report easier\n",
+        "\n",
+        "The url field is the most critical part. The other columns could have been derived using this field, but I have opted for these to be used defined so the code can focus on just pulling information for the cards in the different commanders' decks.\n",
+        "\n",
+        "The contents of the input file are stored in a dataframe named `commanders_df`. The code then iterates every row of that data frame to request the data from the webpage indicated under `url`. The required data is in the JSON portion, so it first finds the section using a `str.find()`. It then uses the **json** package to parse the contents and find the relevant tags.\n"
+      ],
+      "id": "706ae010"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "EVAL": false,
+        "ECHO": false
+      },
+      "source": [
+        "# Load commander list from CSV\n",
+        "commanders_file = \"Commanders.csv\"\n",
+        "output_file = \"card_data.csv\"\n",
+        "\n",
+        "try:\n",
+        "    commanders_df = pd.read_csv(commanders_file)\n",
+        "except FileNotFoundError:\n",
+        "    print(f\"Error: {commanders_file} not found.\")\n",
+        "    exit()\n",
+        "\n",
+        "# Ensure expected columns exist\n",
+        "if \"Commander\" not in commanders_df.columns or \"url\" not in commanders_df.columns:\n",
+        "    print(f\"Error: {commanders_file} must contain 'Commander' and 'url' columns.\")\n",
+        "    exit()"
+      ],
+      "id": "d5118fd1",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "EVAL": false
+      },
+      "source": [
+        "# Get current date\n",
+        "current_date = datetime.today().strftime(\"%Y-%m-%d\")\n",
+        "\n",
+        "# List to store results\n",
+        "all_cards = []\n",
+        "\n",
+        "for _, row in commanders_df.iterrows():\n",
+        "    commander_name = row[\"Commander\"]\n",
+        "    url = row[\"url\"]\n",
+        "\n",
+        "    print(f\"Processing data for {commander_name}...\")\n",
+        "\n",
+        "    # Fetch webpage content\n",
+        "    response = requests.get(url)\n",
+        "    if response.status_code != 200:\n",
+        "        print(f\"Failed to retrieve webpage for {commander_name}. Status code: {response.status_code}\")\n",
+        "        continue\n",
+        "\n",
+        "    # Extract JSON data from the page source\n",
+        "    page_content = response.text\n",
+        "    json_start = page_content.find('\"json_dict\":')\n",
+        "\n",
+        "    if json_start == -1:\n",
+        "        print(f\"No JSON data found for {commander_name}. Skipping...\")\n",
+        "        continue\n",
+        "\n",
+        "    # Extract JSON until '],\"card\":'\n",
+        "    json_data_str = page_content[json_start + len('\"json_dict\":'):]\n",
+        "    json_data_str = json_data_str.split('],\"card\":', 1)[0] + \"]}\"  # Close JSON properly\n",
+        "\n",
+        "    try:\n",
+        "        json_data = json.loads(json_data_str)\n",
+        "    except json.JSONDecodeError:\n",
+        "        print(f\"Failed to parse JSON for {commander_name}. Skipping...\")\n",
+        "        continue\n",
+        "\n",
+        "    # Extract card data\n",
+        "    for cardlist in json_data.get(\"cardlists\", []):\n",
+        "        header = cardlist.get(\"header\", \"Unknown\")\n",
+        "        for card in cardlist.get(\"cardviews\", []):\n",
+        "            raw_label = card.get(\"label\", \"N/A\")\n",
+        "\n",
+        "            # Extract percentage using regex\n",
+        "            match = re.search(r\"\\d+%\", raw_label)\n",
+        "            label_cleaned = match.group(0) if match else \"N/A\"\n",
+        "\n",
+        "            all_cards.append([\n",
+        "                commander_name,\n",
+        "                current_date,\n",
+        "                card.get(\"name\", \"N/A\"),\n",
+        "                card.get(\"inclusion\", \"N/A\"),\n",
+        "                label_cleaned,  # Only the percentage\n",
+        "                \"https://edhrec.com\" + card.get(\"url\", \"\"),\n",
+        "                header\n",
+        "            ])"
+      ],
+      "id": "139bca96",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "The data is then stored in a dataframe and then written to a file named `card_data.csv` that can be imported into PowerBI.\n"
+      ],
+      "id": "0cdc1b4c"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "EVAL": false
+      },
+      "source": [
+        "# Convert to DataFrame\n",
+        "df = pd.DataFrame(all_cards, columns=[\"Commander\", \"Date\", \"Name\", \"Inclusion\", \"Label\", \"URL\", \"Header\"])\n",
+        "\n",
+        "# Save or append to CSV\n",
+        "if os.path.exists(output_file):\n",
+        "    df.to_csv(output_file, mode=\"a\", header=False, index=False)  # Append without headers\n",
+        "else:\n",
+        "    df.to_csv(output_file, index=False)  # Create new file\n",
+        "\n",
+        "print(f\"Data saved successfully to file!\")"
+      ],
+      "id": "c5023eab",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Extracting Card Images\n",
+        "\n",
+        "This step uses four packages, three of which were used in the first step already. The additional package used is:\n",
+        "\n",
+        "-   [time](https://docs.python.org/3/library/time.html) - optional, but included in this code to include a delay between html requests, which could be important if the website has a cap on the number of requests (e.g., per minute)\n"
+      ],
+      "id": "2fc55a75"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "EVAL": false
+      },
+      "source": [
+        "import pandas as pd\n",
+        "import requests\n",
+        "import time\n",
+        "import re"
+      ],
+      "id": "fae66cd9",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "The cards and their URLs extracted from the first step are loaded into a dataframe named `df`. The existing or the template output file named `card_images.csv` is loaded into another dataframe `card_images`.\n"
+      ],
+      "id": "fa89e8f5"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "EVAL": false
+      },
+      "source": [
+        "# Load card_data.csv and keep only 'Name' and 'URL' columns\n",
+        "df = pd.read_csv('card_data.csv', usecols=['Name', 'URL'])\n",
+        "df = df.drop_duplicates(subset=['Name'])\n",
+        "\n",
+        "# Load card_images.csv\n",
+        "card_images = pd.read_csv('card_images.csv')"
+      ],
+      "id": "2455412d",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "The code will be looking for the image URL using regular expression string stored in `pattern`.\n"
+      ],
+      "id": "c28a76f6"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "EVAL": false
+      },
+      "source": [
+        "# Regex pattern to match the last occurrence of the image URL\n",
+        "pattern = r'\"image_uris\":\\[\\{\"normal\":\"(https://[^\"]+)\"'"
+      ],
+      "id": "15fff9d4",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "The code iterates across rows of `df` and requests the data from the respective `url`. The required image url is found in the last instance of `pattern`, so an index of `-1` is used to extract that value from the output of `re.findall()`. Once done, the code writes back the updated dataframe into `card_images.csv`\n"
+      ],
+      "id": "4f6ae327"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "EVAL": false
+      },
+      "source": [
+        "# Iterate over df and check if the name exists in card_images\n",
+        "for index, row in df.iterrows():\n",
+        "    name = row['Name']\n",
+        "    url = row['URL']\n",
+        "\n",
+        "    # Skip if name already exists in card_images\n",
+        "    if name in card_images['Name'].values:\n",
+        "        continue\n",
+        "\n",
+        "    print(f\"Requesting data for: {name}\")\n",
+        "\n",
+        "    try:\n",
+        "        response = requests.get(url)\n",
+        "        time.sleep(0.1)  # delay to avoid timeouts\n",
+        "\n",
+        "        # Search for the last occurrence of the image URL in the page source\n",
+        "        if response.status_code == 200:\n",
+        "            matches = re.findall(pattern, response.text)\n",
+        "            if matches:\n",
+        "                image_url = matches[-1]  # Take the last match\n",
+        "\n",
+        "                # Append the new row to card_images.csv\n",
+        "                new_row = pd.DataFrame({'Name': [name], 'Image': [image_url]})\n",
+        "                card_images = pd.concat([card_images, new_row], ignore_index=True)\n",
+        "    except Exception as e:\n",
+        "        print(f\"Error retrieving data for {name}: {e}\")\n",
+        "\n",
+        "# Save updated card_images.csv\n",
+        "card_images.to_csv('card_images.csv', index=False)\n",
+        "print(\"Updated card_images.csv successfully!\")"
+      ],
+      "id": "db5e6233",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Additional Step\n",
+        "\n",
+        "To automate the running of the scripts, I have used [**Windows Task Scheduler**](https://learn.microsoft.com/en-us/windows/win32/taskschd/about-the-task-scheduler) to run the script twice a month. This frequency should be sufficient since changes to the decks are usually triggered by new cards, announcements or viral content, which don't happen daily, or even weekly.\n",
+        "\n",
+        "# Building in Power BI\n",
+        "\n",
+        "The three CSV files containing (1) the commanders, (2) the commander decks' card data, and (3) the image URL of the cards are loaded into separate tables in PowerBI. The first two tables are related by the `Commander` while the last two are related by the card `Name`.\n",
+        "\n",
+        "![](edh-tracker-data-model.jpg){fig-align=\"center\" width=\"498\"}\n",
+        "\n",
+        "A simple report, as shown below, can already be created using these tables which can display the information for a selected commander for a given date.\n",
+        "\n",
+        "![](edh-tracker-1.jpg){fig-align=\"center\"}\n",
+        "\n",
+        "There are two limitations to this report:\n",
+        "\n",
+        "1.  The slicers are left as multi-select ones to allow for a clear filter button. If multiple or no commanders are selected, the tables will display data that could confuse the user. **It would be better to only display data when one commander is selected.**\n",
+        "\n",
+        "2.  The tables only display the card names, some, or most which might be unrecognizable to users. We can use the card images to add additional information on the cards.\n",
+        "\n",
+        "## Displaying Information when only one Commander is Selected\n",
+        "\n",
+        "Visual filters can be used to not only display data based on the value of columns, but also based on the value of a measure. A measure that checks the singularity, or the number, of commanders, can be used to achieve our objective of only displaying data when one is selected.\n",
+        "\n",
+        "We can create a measure that checks the number of selected `Commander` by using a combination of `COUNTROWS()` and `ALLSELECTED()`. The latter is a necessary filter argument so it preserves all filters applied by slicers.\n",
+        "\n",
+        "```         \n",
+        "  Commanders Selected =\n",
+        "    CALCULATE(\n",
+        "      COUNTROWS(commanders),\n",
+        "      ALLSELECTED(commanders[Commander])\n",
+        "    ) \n",
+        "```\n",
+        "\n",
+        "Using this measure as a filter in each of the tables and the chart will ensure that they will only display data if only one commander is selected.\n",
+        "\n",
+        "## Displaying the Card Image as a Tooltip\n",
+        "\n",
+        "Given the number of cards that will be displayed at a time on the table and in the chart, displaying the cards will take up a lot of space and be very messy. An alternative is to display the card image in tooltips. This means that the image will only be shown when the user mouses over a particular card name or datapoint.\n",
+        "\n",
+        "Images cannot be included in default tooltips, but can be included in report pages which can then be turned into report tooltips. A page can be turned into a tooltip through its formatting options by ticking the **\"Allow use as tooltip\"** (under Page Information) and adjusting the size of the canvas (under Canvas Settings)\n",
+        "\n",
+        "This [Microsoft Learn article](https://learn.microsoft.com/en-us/power-bi/create-reports/desktop-tooltips) gives some more detailed information in creating these tooltips.\n",
+        "\n",
+        "I have added two visuals to the tooltip page. A **Card (New)** visual allows using the image URL as the display image. A **Multi-row card** allows adding different statistics or measures to display in the tooltip. For now, this will just show the percentage of decklists for that commander that contain that card.\n",
+        "\n",
+        "![](edh-tracker-report-tooltip.jpg){fig-align=\"center\"}\n",
+        "\n",
+        "Note that the report page will not show the \"right\" values since no filters are being applied to the report page itself. This will not be the case when the report appears as a tooltip.\n",
+        "\n",
+        "Once this is set up, visuals can be configured to display the report tooltip by going to **Tooltips** under the **General** section of **Format Visual**. Tooltips should be enabled, the **Type** should be set to Report page. If there are multiple report tooltips, or to avoid confusion, it is also best to specify the page to use as the tooltip.\n",
+        "\n",
+        "![](set-tooltip-to-report-page.jpg){fig-align=\"center\" width=\"200\"}\n",
+        "\n",
+        "# Next Steps\n",
+        "\n",
+        "I will revisit the report later once I have more data in– ideally with at least four data points, or after two months. This will allow me to run more analyses using new measures and report pages that could check trends for the commanders that are being monitored. In the meantime, I will play around with the data that I do have and see if there is some insights that I can use to improve my decks or gameplan."
+      ],
+      "id": "504e81ea"
+    }
+  ],
+  "metadata": {
+    "kernelspec": {
+      "name": "python3",
+      "language": "python",
+      "display_name": "Python 3 (ipykernel)",
+      "path": "C:\\ProgramData\\Anaconda3\\share\\jupyter\\kernels\\python3"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 5
+}

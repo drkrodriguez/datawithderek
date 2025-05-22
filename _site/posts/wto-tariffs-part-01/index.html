@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.5.56">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Derek Rodriguez">
+<meta name="dcterms.date" content="2025-05-22">
+
+<title>Visualizing Tariff Rates Using Power BI – data with derek</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<script src="../../site_libs/quarto-html/quarto.js"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-dark.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="dark">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="../../styles.css">
+</head>
+
+<body class="nav-fixed fullcontent">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top quarto-banner">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">data with derek</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/drkrodriguez/datawithderek"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://www.linkedin.com/in/fjsrodriguez/"> <i class="bi bi-linkedin" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">Visualizing Tariff Rates Using Power BI</h1>
+                                <div class="quarto-categories">
+                <div class="quarto-category">PowerBI</div>
+                <div class="quarto-category">Tariff</div>
+                <div class="quarto-category">Visualization</div>
+              </div>
+                  </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      <div>
+      <div class="quarto-title-meta-heading">Author</div>
+      <div class="quarto-title-meta-contents">
+               <p>Derek Rodriguez </p>
+            </div>
+    </div>
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">May 22, 2025</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+
+<p>In this post, I use Power BI to visualize the import duties or tariffs for a group of products into different countries using data from the World Trade Organization (WTO).</p>
+<section id="introduction" class="level1">
+<h1>Introduction</h1>
+<p>There are big discussions on tariffs and global trade given the changes being initiated by the US and its current administration. When previously imports into the US were mostly duty-free, most imports now are subject to a minimum duty of 10%.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://assets.bwbx.io/images/users/iqjWHBFdfxIU/irFiIS3mYk88/v1/1800x1201.webp" class="img-fluid figure-img"></p>
+<figcaption>Some of the reciprocal tariffs announced by the Trump administration on 2 April 2025 (image from bloomberg.com)</figcaption>
+</figure>
+</div>
+<p>The administration cites that these rates are retaliatory and is based on the tariffs countries impose on imports from the US directly or indirectly. There is a lot of debate and disagreement on how the numbers were arrived at, but it is clear that these are not the actual tariffs imposed by most of these countries on US imports.</p>
+<p>The actual tariffs can actually be sourced from reputable organizations like the WTO. This information is compiled for the member countries (166 countries at the time of writing) and is made available online. The current version of the data download facility is accessible using this <a href="https://ttd.wto.org/en/download">link</a>, while the old tariff download facility is accessible using this <a href="http://tariffdata.wto.org/default.aspx">link</a>. (but is announced to be retired some time after March 2025)</p>
+</section>
+<section id="objectives" class="level1">
+<h1>Objectives</h1>
+<p>For this post, I will use the information that can be downloaded from WTO to achieve the following objectives:</p>
+<ol type="1">
+<li><p>Load and transform the data in Power BI;</p></li>
+<li><p>Visually analyze the reported tariffs (MFN or Most-Favoured-Nation rates, which is the maximum rate that an WTO members charge other members) of different countries for a select number of products;</p></li>
+<li><p>Compare some of these tariffs to the numbers reported by the USA on 2 April 2025</p></li>
+</ol>
+</section>
+<section id="scope-and-limitations" class="level1">
+<h1>Scope and Limitations</h1>
+<p>This post, and the initial version of the resulting Power BI report will only focus on the MFN rates as reported in the WTO database. I will be using the old tariff facility, which is more convenient to download the data from, but comes with some limitations.</p>
+<p><strong>Limitation of future updates</strong>. The older tariff download facility is only updated up to March 2025, and will be retired eventually. At the moment, there should be no difference between the data between the old and new facility since both will only be reflecting 2024 as the most recent reporting year, but this will not be the case moving forward. Refreshing this analysis and the report at a later date will require using another dataset and modifying the data preparation or transformation steps</p>
+<p><strong>MFN Rates only</strong>. I will be limiting the analysis in this post to MFN rates, which should be the default maximum tariff charged by WTO members. While the information exists on preferential rates, or lower rates charged where there is a trade agreement signed between some countries, it is outside the scope of this post. I will, however, be looking into creating an update which takes preferential rates into account.</p>
+<p><strong>Only considers Tariff rates</strong>. It should be noted that the WTO report only considers tariffs as reported by the member countries. Any other import-related taxes or charges are excluded from their database and are therefore outside the scope of this post. These other taxes inlcudes sales or value-added taxes that may be applicable to imports, but also other more protective taxes like the ones applied in India as summarized in this 2022 <a href="https://www.dhl.com/discover/en-my/logistics-advice/import-export-advice/guide-to-import-duty-and-taxes-in-india">article in the DHL website</a>. Anyone analyzing the data should be aware that such taxes exist and is advised to look up the full cost of importation and not take the tariffs at face value.</p>
+<p><strong>Limited products</strong>. The tariffs are at a product, denoted by their HS code (up to 6 digits in the WTO facility) and the reporting country. Each request is made by specifying these, and while all countries can be selected, it is not possible to select all products. There is also a limit to the number of rows can be extracted at a time, so each data request can only cover a few HS codes at a time. For this first version, I have downloaded the information for the following HS codes, based on the first four digits:</p>
+<ol type="1">
+<li><p>0201xx and 0202xx - Beef or bovine meat</p></li>
+<li><p>1005xx - Corn or maize</p></li>
+<li><p>1006xx - Rice</p></li>
+<li><p>3004xx - Medicaments (medicine) in fixed doses</p></li>
+<li><p>2202xx - Flavored waters (non-alcoholic beverages with flavoring)</p></li>
+<li><p>2709xx - Petroleum oil, crude</p></li>
+<li><p>3401xx - Soap (for body washing)</p></li>
+<li><p>8517xx - Telephone sets (includes smartphones)</p></li>
+</ol>
+<p>Most of these were selected based on a few comments that circulated in the news (e.g., countries not accepting beef, rice or corn imports from the US, moving smart phone production to other countries, medicine being more expensive in the US) while some are relevant to my (previous) roles or experiences. (e.g., toilet soaps)</p>
+</section>
+<section id="data-loading-and-preparation" class="level1">
+<h1>Data Loading and Preparation</h1>
+<p>This section will give a brief summary of the steps in the creation of the data model (semantic model) for the Power BI report. If the reader is not interested in the build part, they can skip ahead two sections to <strong>Analysis</strong>.</p>
+<p>Below were the steps taken:</p>
+<ol type="1">
+<li><p><strong>Download tariff data from WTO portal by 4-digit HS code</strong>. Given the row limit, it was safer to do download data for all countries by a single 4-digit HS code at a time. This means that the 9 HS code headers mentioned in the previous section were downloaded from the portal, in Excel format, one at a time, resulting to 9 different files. These files are kept in a single folder</p></li>
+<li><p><strong>Create reference data</strong>. I then created a separate file as the reference data which mapped the countries or reporters in the WTO database into countries recognized by Power BI, specifically by Azure Maps. The reference data also tagged 6-digit HS codes and included a flag to indicate which of these HS codes will I use for the analysis.</p></li>
+<li><p><strong>Loading into PowerBI</strong>. The WTO tariff data is loaded into PowerBI using a folder connection in order to capture all the extracts. This also includes any additional extracts that I plan to add in the future. (before the site gets decommissioned) The reference data is loaded using a connection to that single file.</p></li>
+<li><p><strong>Transformation in Power Query - Cleaning</strong>. The key transformation involves cleaning up the WTO data (see image below for sample) to remove the unnecessary columns and duplicates. There are duplicated entries for country(reporter) and prooduct pairs since the extract also includes information from different years. The deduplication is done by only keeping the most recent year’s data in the presence of duplicates.</p>
+<p><img src="wto-tariff-extract-sample.jpg" class="img-fluid"></p></li>
+<li><p><strong>Transformation in Power Query - Color Mapping.</strong> The main visualization to be used in this report will be a map visual, and the tariff rates will be indicated by color. I have included the color to use in a column (by adding a Conditional Column) in the data using the following rules:</p>
+<ul>
+<li>If there is a “Note”, which likely indicates a specific tariff, then that country should appear in <strong>maroon;</strong></li>
+<li>If the maximum duty is zero, then it should appear in <strong>dark green;</strong></li>
+<li>If the maximum duty is less than 20%, then it should appear in <strong>light green;</strong></li>
+<li>If the maximum duty is less than 50%, then it should appear in <strong>yellow;</strong></li>
+<li>If the maximum duty is less than 75%, then it should appear in <strong>orange;</strong></li>
+<li>If the maximum duty is at least 75, then it should appear in <strong>red</strong></li>
+</ul></li>
+<li><p><strong>Creation of Relationships and Measures</strong>. Relationships are created for the reporters and the HS codes into the tables from the reference file. A few measures were then created for this version of the report which will be used for the visuals.</p></li>
+</ol>
+</section>
+<section id="report-building" class="level1">
+<h1>Report Building</h1>
+<p>The first version of the report includes two pages that show similar information in different formats. The video below gives a preview of the current version of the report in action.</p>
+<div class="quarto-video ratio ratio-16x9"><iframe data-external="1" src="https://www.youtube.com/embed/GglFs4FMTQM?si=tHspd9f59kIqhvhC" title="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen=""></iframe></div>
+<section id="mfn-import-duty-map-view" class="level2">
+<h2 class="anchored" data-anchor-id="mfn-import-duty-map-view">MFN Import Duty (Map View)</h2>
+<p><img src="wto-tariff-MFN-report-corn-sample.jpg" class="img-fluid"></p>
+<p>The first page allows the user to select a specific HS code using three slicers, and then shows the tariffs visually using an Azure Map visual. A tooltip is included which shows a hidden report that gives more context on the moused-over country. Countries with no data will appear in <strong>grey</strong> and will not show any data in their tooltips.</p>
+</section>
+<section id="matrix-view" class="level2">
+<h2 class="anchored" data-anchor-id="matrix-view">Matrix View</h2>
+<p><img src="wto-tariff-matrix-report-sample.jpg" class="img-fluid"></p>
+<p>A second report gives the tariffs in a matrix. This allows the user to view tariffs for different products imported into the same country. This report only shows the rates for the key HS codes as defined in the reference file. A tooltip is also included to give the user more information for a given country-product pair.</p>
+</section>
+</section>
+<section id="analysis" class="level1">
+<h1>Analysis</h1>
+<p>For the analyses in this post, I will try to answer a few questions, linked to the objectives, using the report created.</p>
+<section id="are-the-high-tariff-rates-correct" class="level2">
+<h2 class="anchored" data-anchor-id="are-the-high-tariff-rates-correct">Are the high tariff rates correct?</h2>
+<p>As earlier mentioned, there is a lot of disagreement on the basis of the retaliatory tariffs imposed on countries. The US administration claims that the numbers are based on all trade barriers, and not only tariff.</p>
+<p>I will not go into the detail of how the US computed the numbers they published, but for the sake of analysis, I will only focus on the actual tariff since it is the one that is directly comparable between US and the other countries. <strong>Are the rates close to the actual tariffs imposed by the countries?</strong> If there is a large difference, then it must come from the “nontariff barriers” or the numbers used are simply wrong.</p>
+<p>To answer this, I will only look at the countries with the highest retaliatory rates. These are the following countries:</p>
+<ul>
+<li><p>China: 67% imposed tariff on the US</p></li>
+<li><p>European Union: 39% imposed tariff on the US</p></li>
+<li><p>Vietnam: 90% imposed tariff on the US</p></li>
+<li><p>Taiwan: 64% imposed tariff on the US</p></li>
+<li><p>India: 52% imposed tariff on the US</p></li>
+<li><p>Japan: 46% imposed tariff on the US</p></li>
+</ul>
+<p>Using the matrix view, and selecting a handful of HS codes, we can show the tariffs for these countries in a table as below.</p>
+<p><img src="mfn-tariff-top6-us-retaliatory.jpg" class="img-fluid"></p>
+<p>It is worth noting that these are MFN rates. If there are existing trade agreements between the US and some countries for these materials, then the rates are likely lower than what is shown.</p>
+<p>The table above shows that there is currently very low tariff for smartphones, but for products like corn and beef, we see some high tariffs (20-80%) for some of the countries.</p>
+<p>If we put these numbers side by side with the ones from the April 2 announcement, we get the following:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Reporter</th>
+<th>From US’ Apr 2 Announcement</th>
+<th>From WTO Database (based on beef, corn and rice)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>China</td>
+<td>67%</td>
+<td>20-65%</td>
+</tr>
+<tr class="even">
+<td>Taiwan</td>
+<td>64%</td>
+<td>0%</td>
+</tr>
+<tr class="odd">
+<td>European Union</td>
+<td>39%</td>
+<td>0-7.7%</td>
+</tr>
+<tr class="even">
+<td>India</td>
+<td>52%</td>
+<td>30-80%</td>
+</tr>
+<tr class="odd">
+<td>Japan</td>
+<td>46%</td>
+<td>0-39%</td>
+</tr>
+<tr class="even">
+<td>Vietnam</td>
+<td>90%</td>
+<td>30-40%</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><p>EU and Taiwan actually have zero tariffs but are said to have 39% and 64% respectively (looks <strong>massively</strong> <strong>overstated</strong>)</p></li>
+<li><p>China and India have up to 65% and up to 80% tariffs, but are said to have 67% and 52% respectively (looks <strong>understated</strong> given the non-tariff import taxes these countries are known to have)</p></li>
+<li><p>Japan and Vietnam have up to 39% and up to 40% tariffs, but are said to have 46% and 90% respectively (looks <strong>overstated</strong>)</p></li>
+</ul>
+<p>Based on these, it looks like with the exception of China and Japan, the published numbers in the April 2 announcement appear <strong>overstated</strong>, and in varying degrees.</p>
+<p>Note that these observations do not take into account any possible free trade agreements that may exist with the US, so the degree of overstatement may even be larger.</p>
+</section>
+<section id="what-is-the-cost-tariff-of-importing-beef" class="level2">
+<h2 class="anchored" data-anchor-id="what-is-the-cost-tariff-of-importing-beef">What is the cost (tariff) of importing beef?</h2>
+<p>One statement raised by the US president is that <a href="https://www.reuters.com/markets/commodities/trump-attacked-australian-beef-industry-looks-like-tariff-winner-2025-04-08/">Australia is not importing any US beef</a>, which is one reason why they are being slapped with a 10% tariff. (even though most of the trade between the two countries is duty free, and even though the reason why beef imports from US are restricted are due to safety and biosecurity reasons)</p>
+<p>Why is beef being singled out? Is it a freely traded product in the first place? Are there little to no tariffs for beef?</p>
+<p>Beef is covered by multiple HS codes, but for this report and analysis, I will focus on frozen meat under the two HS codes:</p>
+<ol type="1">
+<li><p>020210 - Frozen bovine carcases and half-carcases (i.e., beef carcases)</p></li>
+<li><p>020220 - Frozen bovine cuts, with bone in (i.e., beef cuts)</p></li>
+</ol>
+<p>While I also have the data for fresh beef, (under HS code 0201xx) since <a href="https://www.abs.gov.au/articles/insights-australian-exports-meat">Australia primarily exports frozen beef</a>, I have opted to focus on that in this post.</p>
+<section id="tariffs-mfn-duty-for-frozen-beef-carcases" class="level3">
+<h3 class="anchored" data-anchor-id="tariffs-mfn-duty-for-frozen-beef-carcases">Tariffs (MFN Duty) for Frozen Beef Carcases</h3>
+<p>Running the first page of the report on HS Code 020210 results in the following map:</p>
+<p><img src="wto-tariff-MFN-report-beef-carcase.jpg" class="img-fluid"></p>
+<p>We get the following insights:</p>
+<ul>
+<li><p>Imports of frozen beef carcases into most of Europe (note, Germany in the map corresponds to the EU), Mexico, Southern Africa, Australia, and New Zealand are duty-free</p></li>
+<li><p>Most of the countries are in the range of 1%-20% (light green) and 20%-50% (yellow) range</p></li>
+<li><p>US has a tariff of 26.4% for imports in this category</p></li>
+<li><p>Countries with very high import duty rates include Uganda (60%), Colombia (80%), and Morocco (200%)</p></li>
+</ul>
+</section>
+<section id="tariffs-mfn-duty-for-frozen-beef-cuts" class="level3">
+<h3 class="anchored" data-anchor-id="tariffs-mfn-duty-for-frozen-beef-cuts">Tariffs (MFN Duty) for Frozen Beef Cuts</h3>
+<p>Running the first page of the report on HS Code 020220 results in the following map:</p>
+<p><img src="wto-tariff-MFN-report-beef-cuts.jpg" class="img-fluid"></p>
+<p>We get the following insights:</p>
+<ul>
+<li><p>Imports of frozen beef cuts into EU, Mexico, Southern Africa, and Australia are still duty-free. Most of the duties actually remain the same as in the previous category</p></li>
+<li><p>New Zealand charges a fixed 7.7 USD per kg for imports in this category</p></li>
+<li><p>We see more movement as China moves from yellow to light green, and Indonesia moves from light green (&lt;20% duty) to now having a duty of 5% <strong>plus</strong> 2.3 USD per kg</p></li>
+<li><p>US has a tariff of 4%-26.4% for imports in this category (and remains yellow in the chart since it is based on the maximum)</p></li>
+</ul>
+<p>Based on these two charts, and without looking at all the other categories, it seems like tariff is not a very big barrier for beef imports. Big beef producers like Australia and Brazil are charging less than 10% tariffs, and China is only charging 12%. The US appears to be one of the countries that charge more for imports of beef, but I expect that this is not applicable to big trading partners, as they would have an FTA or a free trade agreement in place.</p>
+</section>
+</section>
+<section id="what-is-the-cost-tariff-of-importing-rice" class="level2">
+<h2 class="anchored" data-anchor-id="what-is-the-cost-tariff-of-importing-rice">What is the cost (tariff) of importing rice?</h2>
+<p>Another statement that came out of the US side is on rice, specifically into Japan. They claim that Japan has imposed <a href="https://time.com/7283809/japan-us-trade-talks-rice-agriculture-protectionism-reform-trump-tariffs/">more than 700% in tariffs for rice imports from the US</a>. The Japanese side has since refuted that, saying that tariffs only applied after a quota is met, that they still import a large amount of rice from the US, and the 700% is based on prices in 1999-2001.</p>
+<p>Similar to beef, we can also look at what the actual tariffs on rice are using the data from WTO. Rice comes in a number of forms, so I will limit my analysis to two HS codes:</p>
+<ol type="1">
+<li><p>100610 - Rice in the husk (i.e., rough rice)</p></li>
+<li><p>100630 - Semi-milled or wholly milled rice (i.e., milled rice)</p></li>
+</ol>
+<section id="tariffs-mfn-duty-for-rough-rice" class="level3">
+<h3 class="anchored" data-anchor-id="tariffs-mfn-duty-for-rough-rice">Tariffs (MFN Duty) for Rough Rice</h3>
+<p>Running the first page of the report on HS Code 100610 results in the following map:</p>
+<p><img src="wto-tariff-MFN-report-rice-rough.jpg" class="img-fluid"></p>
+<p>We get the following insights:</p>
+<ul>
+<li><p>Imports of rough rice are duty-free into a number of countries including US, Canada, Australia and <strong>Japan</strong></p></li>
+<li><p>Unlike beef, there is a 7.7% tariff into the EU. Most of Latin America, Africa are also in this low tariff range of 0-20%</p></li>
+<li><p>There are high tariffs into a number of countries like China (65%), India (80%), New Zealand (1.6 USD per kg), and Indonesia (20 USD per kg)</p></li>
+</ul>
+</section>
+<section id="tariffs-mfn-duty-for-milled-rice" class="level3">
+<h3 class="anchored" data-anchor-id="tariffs-mfn-duty-for-milled-rice">Tariffs (MFN Duty) for Milled Rice</h3>
+<p>Running the first page of the report on HS Code 100630 results in the following map:</p>
+<p><img src="wto-tariff-MFN-report-rice-milled.jpg" class="img-fluid"></p>
+<p>We get the following insights:</p>
+<ul>
+<li><p>Most of the countries that import rough rice duty-free also do the same for milled rice.</p></li>
+<li><p>The only exception to the previous point is the US which charges 11.2% tariff on milled rice.</p></li>
+<li><p>Russia also imports milled rice duty-free, while for rough rice they impose 10-30% tariff.</p></li>
+<li><p>There are some changes to the tariffs on the high end which include India charging 70% (vs 80% for rough rice), New Zealand charging 1.1 USD per kg (vs 1.6 USD for rough rice), Indonesia charging 0.54 USD. (vs 20 USD for rough rice) These are all downward shifts compared to the rates for rough rice.</p></li>
+</ul>
+<p>Based on these two charts, it looks like tariff barriers are generally lower for rice than for beef in the Americas and Africa, but not for most of Asia. Japan also consistently shows duty-free rates. (without considering quotas) For the rest of Asia, it looks like rice has a higher tariff compared to beef, which is understandable as the crop should be grown widely in the region.</p>
+</section>
+</section>
+</section>
+<section id="whats-next" class="level1">
+<h1>What’s Next?</h1>
+<p>There are other products that I can analyze with the current version of the report, but I will end the post here. We were able to see how we can use the map visual to analyze the MFN rates from the WTO facility with minimal data transformation required.</p>
+<p>The current report only shows the MFN rates, which gives a limited picture. The data from WTO includes information on preferential rates, which might be good to analyze as it will reveal countries that will have lower import barriers for specific products into a country of interest. Incorporating this will require some more intensive data transformation, but will bring a lot of value to someone interested in understanding low tariff opportunities. I look forward to sharing an updated version with these new view in a future post.</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    // For code content inside modals, clipBoardJS needs to be initialized with a container option
+    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
