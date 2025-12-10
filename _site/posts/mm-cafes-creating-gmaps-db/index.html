@@ -261,13 +261,13 @@ window.Quarto = {
 <li><p><a href="https://pypi.org/project/requests/">requests</a> - This library is the standard for making simple http requests</p></li>
 <li><p><a href="https://docs.python.org/3/library/csv.html">csv</a> - This is for reading and writing CSV files which will be the format used to store our results</p></li>
 <li><p><a href="https://docs.python.org/3/library/math.html">math</a> - This library gives access to common math functions and constants We will mainly use this to perform calculations to split Metro Manila into grid squares for the grid-based search.</p></li>
-<li><p><a href="https://pypi.org/project/pandas/">panda</a> - For handling dataframe data structures in Python. We use this mainly to analyze the data after.</p></li>
+<li><p>pandas - For handling dataframe data structures in Python. We use this mainly to analyze the data after.</p></li>
 <li><p><a href="https://pypi.org/project/geopandas/">geopandas</a> - This library lets us work with geospatial data in Python</p></li>
 <li><p><a href="https://shapely.readthedocs.io/en/latest/">shapely</a> - This library is used for the manipulation and analysis of planar objects</p></li>
 <li><p><a href="https://docs.python.org/3/library/shutil.html">shutil</a> - This library provides functions for operating on files. We use this mainly to produce backup copies of files that we have just updated</p></li>
 <li><p><a href="https://docs.python.org/3/library/os.html">os</a> - Provides OS functionality. We will use this mainly to identify the filename and generate a backup filename to use in conjunction with the previous package.</p></li>
 </ol>
-<div id="3da94331" class="cell" data-execution_count="1">
+<div id="cde75718" class="cell" data-execution_count="1">
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> requests</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> time</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> csv</span>
@@ -283,20 +283,21 @@ window.Quarto = {
 </section>
 <section id="step-1-generating-initial-gridpoints" class="level1">
 <h1>Step 1: Generating Initial Gridpoints</h1>
-<p>A <a href="https://developers.google.com/maps/documentation/places/web-service/nearby-search">Nearby Search</a> using the Places API lets the user perform a search by specifying an area and then specifying the type(s) of places to return. For defining the search area, we will be using coordinates and then defining a search radius to use. At the time of writing, it looks like each search will only return a maximum of 20 results, so we need to try to define search areas that are small enough to ensure that a single query returns all cafes in the area.</p>
-<p>To do this, we can define the total area we want to perform the search on, Metro Manila, and then find a bounding box for that area. The corners of the area are what we need. A web search gave us the following coordinates:</p>
-<div id="17723263" class="cell" data-execution_count="2">
+<p>A <a href="https://developers.google.com/maps/documentation/places/web-service/nearby-search">Nearby Search</a> using the Places API lets the user perform a search by specifying an area and then specifying the type(s) of places to return. For defining the search area, we will be defining the coordinates for the center, and then also the search radius to use. At the time of writing, it looks like each search / API call will only return a maximum of 20 results. This means that we need to try to define search areas that are small enough to ensure that a single query returns all cafes in the area.</p>
+<p>In order to do this, we define the total area we want to perform the search on, Metro Manila, and then find a bounding box for that area– in particular, the corners of the bounding box. A web search gave us the following coordinates:</p>
+<div id="b65a996d" class="cell" data-execution_count="2">
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Upper left and lower right corners of bounding box</span></span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>NW_LAT, NW_LNG <span class="op">=</span> <span class="fl">14.7100</span>, <span class="fl">120.9500</span></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>SE_LAT, SE_LNG <span class="op">=</span> <span class="fl">14.4000</span>, <span class="fl">121.1000</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>With the bounding box defined, we then need to split it into smaller areas to perform the search on. For now, we will use a distance of 1km vertically or horizontally between the center of adjacent search areas. This will split the total area into grid points or grid squares. We also need to define a radius for the search. The radius of the search needs to cover the diagonal of each grid square, and not only the radius. The diagonal measures <span class="math inline">\(\sqrt{2}/2\)</span> , which we can round up to 710m.</p>
-<div id="c28b953f" class="cell" data-execution_count="3">
+<p>With the bounding box defined, we then need to split it into smaller areas to perform the search on. For now, we will use a distance of 1km vertically or horizontally between the center of adjacent search areas. This will split the total area into grid points or grid squares.</p>
+<p>We also need to define a radius for the search. The radius of the search needs to cover the diagonal of each grid square, and not only the radius. The diagonal measures <span class="math inline">\(\sqrt{2}/2\)</span> , which we can round up to 710m.</p>
+<div id="897eacf5" class="cell" data-execution_count="3">
 <div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>GRID_STEP_KM <span class="op">=</span> <span class="dv">1</span>  <span class="co"># Grid square side</span></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>SEARCH_RADIUS_M <span class="op">=</span> GRID_STEP_KM <span class="op">*</span> <span class="dv">710</span>  <span class="co"># Search radius in meters</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>The function to generate the initial grid points then needs to move from one corner of the bounding box, in this case, the top left corner, to the opposite corner. The code below moves from left to right before moving to the next “row”. The function uses an estimate of 111 km for every degree latitude</p>
-<div id="a77d533d" class="cell" data-execution_count="4">
+<p>The function to generate the initial grid points then needs to move from one corner of the bounding box, in this case, the top left corner, to the opposite corner. The code below moves from left to right before moving to the next “row”. The function uses an estimate of 111 km for every degree of latitude in order to move across the bounding box.</p>
+<div id="0290b0a9" class="cell" data-execution_count="4">
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> generate_grid_points(nw_lat, nw_lng, se_lat, se_lng, step_km):</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    points <span class="op">=</span> []</span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    lat_step <span class="op">=</span> step_km <span class="op">/</span> <span class="fl">111.0</span>  <span class="co"># approx degrees per km</span></span>
@@ -310,13 +311,13 @@ window.Quarto = {
 <span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>        lat <span class="op">-=</span> lat_step</span>
 <span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> points</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Running the function above with the bounding box coordinates, and a 1km spacing, gives us the following grid points.</p>
+<p>Running the function above with the bounding box coordinates and a 1km spacing gives us the following grid points.</p>
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
 <p><img src="grid_points_1km_no_filter.png" class="img-fluid quarto-figure quarto-figure-center figure-img"></p>
 </figure>
 </div>
-<p>The function generated 595 grid points. While this appears okay, as we are still within our free cap, we expect to make multiple runs in a month as we test, or add on layers. Two runs will already incur us costs. We also see that a large number of these points fall on water, which means the API call is wasted in such cases. We need to remove these points to make sure we reduce the number of calls that do not generate any results.</p>
+<p>The function generated 595 grid points. While this appears okay, since we are still within our free cap, we expect to make multiple runs in a month as we test or add on layers. Two runs will already incur us costs. We also see that a large number of these points fall on water, which means the API call is wasted in such cases. We need to remove these points to make sure we reduce the number of calls that do not generate any results.</p>
 </section>
 <section id="step-2-filtering-grid-points-reduce-points-falling-on-water" class="level1">
 <h1>Step 2: Filtering Grid Points (Reduce points falling on water)</h1>
@@ -327,7 +328,7 @@ window.Quarto = {
 <li>Converts the initial list of gridpoints <code>gp</code> from the current coordinates into a geo dataframe using the same reference system as the shapefile. This transforms <code>gp</code> into <code>points_gdf</code></li>
 <li>Combines metro_manila into a single shape using <code>union_all</code>, and then uses <code>within</code> to check which points in <code>points_gdf</code> fall within <code>union_all</code>. These points are the ones returned by the function.</li>
 </ol>
-<div id="4e701b86" class="cell" data-execution_count="5">
+<div id="27d35dc1" class="cell" data-execution_count="5">
 <div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> mm_filter(gp):</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Loading the shapefile</span></span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    shapefile_path <span class="op">=</span> <span class="st">"ADM_1_shapefile_path"</span></span>
@@ -362,7 +363,7 @@ window.Quarto = {
 <li>Introduce a 1km buffer around the combined Metro Manila area using <code>buffer(1000)</code></li>
 <li>Reproject the area back to EPSG 4326, then follow the same steps for checking the input list <code>gp</code> and returning the filtered points.</li>
 </ol>
-<div id="9af63786" class="cell" data-execution_count="6">
+<div id="32015bca" class="cell" data-execution_count="6">
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> mm_filter_v2(gp):</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    shapefile_path <span class="op">=</span> <span class="st">"ADM_1_shapefile_path"</span></span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    gdf <span class="op">=</span> gpd.read_file(shapefile_path)</span>
@@ -391,7 +392,7 @@ window.Quarto = {
 <section id="step-3-performing-the-nearby-search" class="level1">
 <h1>Step 3: Performing the Nearby Search</h1>
 <p>The Nearby Search is done by making a call using the <a href="https://pypi.org/project/requests/">requests</a> package. The request parameters will include the endpoint, and the details for the request which will be passed on in JSON format as the <code>headers</code> and <code>json</code> parameters below.</p>
-<div id="7eb97e6b" class="cell" data-execution_count="7">
+<div id="5904ef00" class="cell" data-execution_count="7">
 <div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Incomplete function, for illustration only</span></span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> fetch_places(center_lat, center_lng, radius, included_types):</span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Endpoint for Nearby Search</span></span>
@@ -411,7 +412,7 @@ window.Quarto = {
 <span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> data.get(<span class="st">"places"</span>, [])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>The <code>headers</code> parameter is where we will include our API key, and the list of fields to return, or the field mask. While the field mask can accept the wildcard <code>"*"</code>, it is not advisable since the Nearby Search covers multiple Nearby Search SKUs based on the “most expensive” field requested. The wildcard will trigger pricing for the most expensive SKU (Nearby Search Enterprise + Atmosphere), which we currently do not need.</p>
-<div id="6486817e" class="cell" data-execution_count="8">
+<div id="f2b8b383" class="cell" data-execution_count="8">
 <div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Enumerate fields to request</span></span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>fields_to_include <span class="op">=</span> [</span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>         <span class="st">"places.id"</span>,</span>
@@ -433,7 +434,7 @@ window.Quarto = {
 <span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>  }</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>The json parameter, which we will pass on the value of body, is where we define the specific Nearby Search parameters. This includes the search area, the type of places to include, and the number of results to return. (up to a maximum of 20) The <code>rankPreference</code> can also be defined, and we use “DISTANCE” to make sure that results are sorted and picked up based on the proximity to the center. The default mode is “POPULARITY” which might mean that big chains that fall on the overlap of search areas have a high chance of being repeated, and displace some of the less popular cafes.</p>
-<div id="3f796c8b" class="cell" data-execution_count="9">
+<div id="c570de51" class="cell" data-execution_count="9">
 <div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>included_types <span class="op">=</span> [<span class="st">"cafe"</span>, <span class="st">"coffee_shop"</span>]</span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>body <span class="op">=</span> {</span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>        <span class="st">"locationRestriction"</span>: {</span>
@@ -458,7 +459,7 @@ window.Quarto = {
 <section id="step-4-adding-barangay-and-city-information" class="level1">
 <h1>Step 4: Adding barangay and city information</h1>
 <p>We use the pandas package to load the data into a dataframe in order to examine the current output.</p>
-<div id="73fe1122" class="cell" data-execution_count="10">
+<div id="2156c676" class="cell" data-execution_count="10">
 <div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.read_csv(<span class="st">'.\data\metro_manila_cafes.csv'</span>)</span>
 <span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>df.head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -566,7 +567,7 @@ window.Quarto = {
 </div>
 </div>
 </div>
-<div id="ef3689ca" class="cell" data-execution_count="11">
+<div id="b76bb741" class="cell" data-execution_count="11">
 <div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>df.columns</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-display" data-execution_count="11">
 <pre><code>Index(['place_id', 'name', 'address', 'lat', 'lng', 'types', 'business_status',
@@ -576,7 +577,7 @@ window.Quarto = {
 </div>
 </div>
 <p>The output contains 12 columns that describe each cafe returned by the Nearby search. We want to examine the location information, since a large part of the analysis we will be performing will be location-based as we analyze cafes in a given area. It looks like that aside from the coordinates, (<code>lat</code>, <code>lng</code>) we have the location information in the address column. We can check out the first few elements using the code chunk below.</p>
-<div id="00a969ba" class="cell" data-execution_count="12">
+<div id="70a06a07" class="cell" data-execution_count="12">
 <div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">5</span>): <span class="bu">print</span>(df[<span class="st">'address'</span>][i])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>62, HP Building, G. Lazaro Rd, Valenzuela, 1443 Metro Manila, Philippines
@@ -597,7 +598,7 @@ Pascual Deato, Manila, Metro Manila, Philippines
 <li>Merges <code>cafes_gdf</code> and <code>admin_gdf</code> using a spatial join <code>sjoin</code>.</li>
 <li>Writes the relevant columns into the masterfile. Additional columns for future steps: <code>Group</code>, and <code>Include</code> are also added to the file with default values</li>
 </ol>
-<div id="2079e8f0" class="cell" data-execution_count="13">
+<div id="a303f542" class="cell" data-execution_count="13">
 <div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> create_master(input_file<span class="op">=</span><span class="st">'.\data\metro_manila_cafes.csv'</span>, master_file<span class="op">=</span><span class="st">'.\data\metro_manila_cafes_master.csv'</span>):</span>
 <span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Load ADM4 Shapefile</span></span>
 <span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>    shapefile_path <span class="op">=</span> <span class="st">"shapefile_path_up_to_ADM4"</span></span>
@@ -653,7 +654,7 @@ Pascual Deato, Manila, Metro Manila, Philippines
 <span id="cb15-53"><a href="#cb15-53" aria-hidden="true" tabindex="-1"></a>        <span class="bu">print</span>(enriched_df.tail())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Once the code runs, we can use the following code to run a quick query on the top 5 cities and barnagays with the most cafes.</p>
-<div id="d8f1c1c6" class="cell" data-execution_count="14">
+<div id="79acc77b" class="cell" data-execution_count="14">
 <div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.read_csv(<span class="st">'.\data\metro_manila_cafes_master.csv'</span>)</span>
 <span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Top 5 Cities in Metro Manila with the most cafes"</span>)</span>
 <span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>df[<span class="st">"ADM3_EN"</span>].value_counts().head()</span>
@@ -681,7 +682,7 @@ Name: count, dtype: int64</code></pre>
 <p>We will do initial tagging based on an inspection of the cafe names. This is by checking the presence of specific substrings in the name, and then using a dictionary of group and substrings to mark cafes. While this can be done manually, we can use some code to help us identify candidate substrings and cafe chains.</p>
 <p>The idea will be to go through the cafe names and check which sequences of words appear commonly in the field– this should point to potential cafe chains. We limit the length of the sequence to 2-4 words. Single words might not be very useful since we expect a lot of noise with words like coffee, cafe, tea, etc., as well as articles to pop up in the results. We also limit to 4 words since we don’t expect brand or chain names to be any longer, most of them should be evident with even less.</p>
 <p>The code below does this by tokenizing the words and creating 2-, 3- and 4-grams, The <a href="https://docs.python.org/3/library/collections.html#collections.Counter">Counter class</a> from the collections package is used to count each n-gram as the code encounters them as it runs through the list of names. The code also includes displaying the top 20 n-grams.</p>
-<div id="4a276bf8" class="cell" data-execution_count="15">
+<div id="5819a5ca" class="cell" data-execution_count="15">
 <div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
 <span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> collections <span class="im">import</span> Counter</span>
 <span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> re</span>
@@ -825,7 +826,7 @@ Name: count, dtype: int64</code></pre>
 </div>
 <p>Based on the top 20 n-grams, we are able to spot a few chain names like: <strong>Pickup Coffee</strong>, <strong>Zus Coffee</strong>, <strong>But First, Coffee</strong>, <strong>Coffee Bean and Tea Leaf</strong>, <strong>Kkopi Tea</strong>. The longer list should be examined to find other recurring n-grams. It is also worth noting that this will not surface any chain names with only one words– like <strong>Starbucks</strong>. While the user can rerun the code for only single words, if they want to have the code help them identify these.</p>
 <p>The identified brands/chains and their keywords can be defined in a function like the one below which can be used to check a cafe name and return the chain name if there is a match in the dictionary, or return “TBC” otherwise.</p>
-<div id="3c2bb3d2" class="cell" data-execution_count="16">
+<div id="fa15f68d" class="cell" data-execution_count="16">
 <div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Complete dictionary not included</span></span>
 <span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> assign_group(name):</span>
 <span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>    brand_dict <span class="op">=</span> {</span>
@@ -848,7 +849,7 @@ Name: count, dtype: int64</code></pre>
 <span id="cb20-20"><a href="#cb20-20" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="st">"TBC"</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>We run the current master in the above function, and get the below summary visuals.</p>
-<div id="7e5ebd9c" class="cell" data-execution_count="17">
+<div id="b7c3e17b" class="cell" data-execution_count="17">
 <div class="sourceCode cell-code" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
 <span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>df_grouped <span class="op">=</span> pd.read_csv(<span class="st">".\data\metro_manila_cafes_master_grouped.csv"</span>)</span>
@@ -859,7 +860,7 @@ Name: count, dtype: int64</code></pre>
 </code></pre>
 </div>
 </div>
-<div id="ac88347b" class="cell" data-execution_count="18">
+<div id="bec57659" class="cell" data-execution_count="18">
 <div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Get value counts</span></span>
 <span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>group_counts <span class="op">=</span> df_grouped[df_grouped[<span class="st">"Group"</span>] <span class="op">!=</span> <span class="st">"TBC"</span>][<span class="st">"Group"</span>].value_counts().head(<span class="dv">15</span>)</span>
 <span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -886,7 +887,7 @@ Name: count, dtype: int64</code></pre>
 </div>
 </div>
 </div>
-<div id="38ebaf13" class="cell" data-execution_count="19">
+<div id="6da69d14" class="cell" data-execution_count="19">
 <div class="sourceCode cell-code" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Get value counts</span></span>
 <span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>group_counts <span class="op">=</span> df_grouped[df_grouped[<span class="st">"Group"</span>] <span class="op">!=</span> <span class="st">"TBC"</span>][<span class="st">"Group"</span>].value_counts().tail(<span class="dv">15</span>)</span>
 <span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a></span>

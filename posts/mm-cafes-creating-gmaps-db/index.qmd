@@ -53,7 +53,7 @@ The current code currently makes use of the following eight packages:
 
 3.  [math](https://docs.python.org/3/library/math.html) - This library gives access to common math functions and constants We will mainly use this to perform calculations to split Metro Manila into grid squares for the grid-based search.
 
-4.  [panda](https://pypi.org/project/pandas/) - For handling dataframe data structures in Python. We use this mainly to analyze the data after.
+4.  pandas - For handling dataframe data structures in Python. We use this mainly to analyze the data after.
 
 5.  [geopandas](https://pypi.org/project/geopandas/) - This library lets us work with geospatial data in Python
 
@@ -80,9 +80,9 @@ Note that these packages are specific to the functions required to run the workf
 
 # Step 1: Generating Initial Gridpoints
 
-A [Nearby Search](https://developers.google.com/maps/documentation/places/web-service/nearby-search) using the Places API lets the user perform a search by specifying an area and then specifying the type(s) of places to return. For defining the search area, we will be using coordinates and then defining a search radius to use. At the time of writing, it looks like each search will only return a maximum of 20 results, so we need to try to define search areas that are small enough to ensure that a single query returns all cafes in the area.
+A [Nearby Search](https://developers.google.com/maps/documentation/places/web-service/nearby-search) using the Places API lets the user perform a search by specifying an area and then specifying the type(s) of places to return. For defining the search area, we will be defining the coordinates for the center, and then also the search radius to use. At the time of writing, it looks like each search / API call will only return a maximum of 20 results. This means that we need to try to define search areas that are small enough to ensure that a single query returns all cafes in the area.
 
-To do this, we can define the total area we want to perform the search on, Metro Manila, and then find a bounding box for that area. The corners of the area are what we need. A web search gave us the following coordinates:
+In order to do this, we define the total area we want to perform the search on, Metro Manila, and then find a bounding box for that area– in particular, the corners of the bounding box. A web search gave us the following coordinates:
 
 ```{python}
 # Upper left and lower right corners of bounding box
@@ -90,14 +90,16 @@ NW_LAT, NW_LNG = 14.7100, 120.9500
 SE_LAT, SE_LNG = 14.4000, 121.1000
 ```
 
-With the bounding box defined, we then need to split it into smaller areas to perform the search on. For now, we will use a distance of 1km vertically or horizontally between the center of adjacent search areas. This will split the total area into grid points or grid squares. We also need to define a radius for the search. The radius of the search needs to cover the diagonal of each grid square, and not only the radius. The diagonal measures $\sqrt{2}/2$ , which we can round up to 710m.
+With the bounding box defined, we then need to split it into smaller areas to perform the search on. For now, we will use a distance of 1km vertically or horizontally between the center of adjacent search areas. This will split the total area into grid points or grid squares.
+
+We also need to define a radius for the search. The radius of the search needs to cover the diagonal of each grid square, and not only the radius. The diagonal measures $\sqrt{2}/2$ , which we can round up to 710m.
 
 ```{python}
 GRID_STEP_KM = 1  # Grid square side
 SEARCH_RADIUS_M = GRID_STEP_KM * 710  # Search radius in meters
 ```
 
-The function to generate the initial grid points then needs to move from one corner of the bounding box, in this case, the top left corner, to the opposite corner. The code below moves from left to right before moving to the next "row". The function uses an estimate of 111 km for every degree latitude
+The function to generate the initial grid points then needs to move from one corner of the bounding box, in this case, the top left corner, to the opposite corner. The code below moves from left to right before moving to the next "row". The function uses an estimate of 111 km for every degree of latitude in order to move across the bounding box.
 
 ```{python}
 def generate_grid_points(nw_lat, nw_lng, se_lat, se_lng, step_km):
@@ -114,11 +116,11 @@ def generate_grid_points(nw_lat, nw_lng, se_lat, se_lng, step_km):
     return points
 ```
 
-Running the function above with the bounding box coordinates, and a 1km spacing, gives us the following grid points.
+Running the function above with the bounding box coordinates and a 1km spacing gives us the following grid points.
 
 ![](grid_points_1km_no_filter.png){fig-align="center"}
 
-The function generated 595 grid points. While this appears okay, as we are still within our free cap, we expect to make multiple runs in a month as we test, or add on layers. Two runs will already incur us costs. We also see that a large number of these points fall on water, which means the API call is wasted in such cases. We need to remove these points to make sure we reduce the number of calls that do not generate any results.
+The function generated 595 grid points. While this appears okay, since we are still within our free cap, we expect to make multiple runs in a month as we test or add on layers. Two runs will already incur us costs. We also see that a large number of these points fall on water, which means the API call is wasted in such cases. We need to remove these points to make sure we reduce the number of calls that do not generate any results.
 
 # Step 2: Filtering Grid Points (Reduce points falling on water)
 
