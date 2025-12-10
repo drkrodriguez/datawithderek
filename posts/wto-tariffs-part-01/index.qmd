@@ -138,7 +138,7 @@ The table above shows that there is currently very low tariff for smartphones, b
 If we put these numbers side by side with the ones from the April 2 announcement, we get the following:
 
 | Reporter | From US' Apr 2 Announcement | From WTO Database (based on beef, corn and rice) |
-|------------------------|------------------------|------------------------|
+|----|----|----|
 | China | 67% | 20-65% |
 | Taiwan | 64% | 0% |
 | European Union | 39% | 0-7.7% |

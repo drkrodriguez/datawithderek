@@ -1,0 +1,1365 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.5.56">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Derek Rodriguez">
+<meta name="dcterms.date" content="2025-12-10">
+
+<title>Creating a database of Cafes in Manila using Google Maps – data with derek</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script><script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<script src="../../site_libs/quarto-html/quarto.js"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-dark.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="dark">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
+
+
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="../../styles.css">
+</head>
+
+<body class="nav-fixed fullcontent">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top quarto-banner">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">data with derek</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/drkrodriguez/datawithderek"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://www.linkedin.com/in/fjsrodriguez/"> <i class="bi bi-linkedin" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">Creating a database of Cafes in Manila using Google Maps</h1>
+                                <div class="quarto-categories">
+                <div class="quarto-category">Python</div>
+                <div class="quarto-category">APIs</div>
+                <div class="quarto-category">Google Maps</div>
+                <div class="quarto-category">Metro Manila</div>
+              </div>
+                  </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      <div>
+      <div class="quarto-title-meta-heading">Author</div>
+      <div class="quarto-title-meta-contents">
+               <p>Derek Rodriguez </p>
+            </div>
+    </div>
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">December 10, 2025</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+
+<p>In this post, I start building a database of cafes in Metro Manila (Philippines) primarily using Python and <a href="https://developers.google.com/maps/documentation/places/web-service/overview">Google’s Places API</a>. The intent is to use such a database for performing market analysis in the region, which should be useful for existing and new cafe businesses. The resulting workflow and code should also be applicable to other industries or locations, as long as they can be targeted by changin the parameters used in the code.</p>
+<section id="summary" class="level1">
+<h1>Summary</h1>
+<p>We are able to build an initial database of 6150 cafes in Metro Manila using a straightforward workflow given in the diagram below:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="mm_cafe_db_v1flow.png" class="img-fluid quarto-figure quarto-figure-center figure-img"></p>
+</figure>
+</div>
+<p>Aside from extracting a list of cafes using Google’s Places API, we also add features like additional location information and tag cafes under identified chains. Further data processing and analysis will be done, which will be shared in future posts.</p>
+<p><strong>Note:</strong> This post will only include relevant snippets of code for readability.</p>
+</section>
+<section id="objectives" class="level1">
+<h1>Objectives</h1>
+<p>We aim to build a database of cafes in Metro Manila that can be used for market analysis for players in the industry. The resulting database and/or the code should observe the following:</p>
+<ul>
+<li><p>The database should give a comprehensive list of cafes in the region using Google Maps data</p></li>
+<li><p>The database should give relevant information on the listed cafes that will allow for further analyses</p></li>
+<li><p>The database should be set up to allow for future updates and monitoring of changes over time</p></li>
+<li><p>Where possible, the code should be efficient and reduce the costs incurred, specifically in the number of calls it makes using the API</p></li>
+</ul>
+</section>
+<section id="the-places-api" class="level1">
+<h1>The Places API</h1>
+<p>Our main source to generate a list of cafes is Google Maps, using data that we will be accessing using <a href="https://developers.google.com/maps/documentation/places/web-service/overview">Google’s Places API</a>.</p>
+<p>The Places API lets us access location information in Google Maps using http requests. The request will access a specific service depending on the endpoint / url. For this post, we will be using the Nearby Search service which is uses the following endpoint: <code>https://places.googleapis.com/v1/places:searchNearby</code></p>
+<p>It is worth noting that the API is not free and is tied to a Google Cloud account. For the specific calls made in this post, there is a cost for exceeding 1,000 API calls: <strong>$35 per 1,000 calls</strong>. (up to 100K calls) It is therefore imperative that the API key is kept secure and that the code does not make any unnecessary calls, as this cost does add up fast.</p>
+</section>
+<section id="loading-packages" class="level1">
+<h1>Loading Packages</h1>
+<p>The current code currently makes use of the following eight packages:</p>
+<ol type="1">
+<li><p><a href="https://pypi.org/project/requests/">requests</a> - This library is the standard for making simple http requests</p></li>
+<li><p><a href="https://docs.python.org/3/library/csv.html">csv</a> - This is for reading and writing CSV files which will be the format used to store our results</p></li>
+<li><p><a href="https://docs.python.org/3/library/math.html">math</a> - This library gives access to common math functions and constants We will mainly use this to perform calculations to split Metro Manila into grid squares for the grid-based search.</p></li>
+<li><p><a href="https://pypi.org/project/pandas/">panda</a> - For handling dataframe data structures in Python. We use this mainly to analyze the data after.</p></li>
+<li><p><a href="https://pypi.org/project/geopandas/">geopandas</a> - This library lets us work with geospatial data in Python</p></li>
+<li><p><a href="https://shapely.readthedocs.io/en/latest/">shapely</a> - This library is used for the manipulation and analysis of planar objects</p></li>
+<li><p><a href="https://docs.python.org/3/library/shutil.html">shutil</a> - This library provides functions for operating on files. We use this mainly to produce backup copies of files that we have just updated</p></li>
+<li><p><a href="https://docs.python.org/3/library/os.html">os</a> - Provides OS functionality. We will use this mainly to identify the filename and generate a backup filename to use in conjunction with the previous package.</p></li>
+</ol>
+<div id="3da94331" class="cell" data-execution_count="1">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> requests</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> time</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> csv</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> math</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> datetime <span class="im">import</span> datetime</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> geopandas <span class="im">as</span> gpd</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> shapely.geometry <span class="im">import</span> Point</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> shutil</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Note that these packages are specific to the functions required to run the workflow. Functions purely for analysis and visualization (e.g., <code>matplotlib</code>) have not been included in this section.</p>
+</section>
+<section id="step-1-generating-initial-gridpoints" class="level1">
+<h1>Step 1: Generating Initial Gridpoints</h1>
+<p>A <a href="https://developers.google.com/maps/documentation/places/web-service/nearby-search">Nearby Search</a> using the Places API lets the user perform a search by specifying an area and then specifying the type(s) of places to return. For defining the search area, we will be using coordinates and then defining a search radius to use. At the time of writing, it looks like each search will only return a maximum of 20 results, so we need to try to define search areas that are small enough to ensure that a single query returns all cafes in the area.</p>
+<p>To do this, we can define the total area we want to perform the search on, Metro Manila, and then find a bounding box for that area. The corners of the area are what we need. A web search gave us the following coordinates:</p>
+<div id="17723263" class="cell" data-execution_count="2">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Upper left and lower right corners of bounding box</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>NW_LAT, NW_LNG <span class="op">=</span> <span class="fl">14.7100</span>, <span class="fl">120.9500</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>SE_LAT, SE_LNG <span class="op">=</span> <span class="fl">14.4000</span>, <span class="fl">121.1000</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>With the bounding box defined, we then need to split it into smaller areas to perform the search on. For now, we will use a distance of 1km vertically or horizontally between the center of adjacent search areas. This will split the total area into grid points or grid squares. We also need to define a radius for the search. The radius of the search needs to cover the diagonal of each grid square, and not only the radius. The diagonal measures <span class="math inline">\(\sqrt{2}/2\)</span> , which we can round up to 710m.</p>
+<div id="c28b953f" class="cell" data-execution_count="3">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>GRID_STEP_KM <span class="op">=</span> <span class="dv">1</span>  <span class="co"># Grid square side</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>SEARCH_RADIUS_M <span class="op">=</span> GRID_STEP_KM <span class="op">*</span> <span class="dv">710</span>  <span class="co"># Search radius in meters</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The function to generate the initial grid points then needs to move from one corner of the bounding box, in this case, the top left corner, to the opposite corner. The code below moves from left to right before moving to the next “row”. The function uses an estimate of 111 km for every degree latitude</p>
+<div id="a77d533d" class="cell" data-execution_count="4">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> generate_grid_points(nw_lat, nw_lng, se_lat, se_lng, step_km):</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    points <span class="op">=</span> []</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    lat_step <span class="op">=</span> step_km <span class="op">/</span> <span class="fl">111.0</span>  <span class="co"># approx degrees per km</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    lng_step <span class="op">=</span> step_km <span class="op">/</span> (<span class="fl">111.0</span> <span class="op">*</span> math.cos(math.radians(nw_lat)))</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    lat <span class="op">=</span> nw_lat</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">while</span> lat <span class="op">&gt;</span> se_lat:</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>        lng <span class="op">=</span> nw_lng</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">while</span> lng <span class="op">&lt;</span> se_lng:</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>            points.append((lat, lng))</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>            lng <span class="op">+=</span> lng_step</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>        lat <span class="op">-=</span> lat_step</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> points</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Running the function above with the bounding box coordinates, and a 1km spacing, gives us the following grid points.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="grid_points_1km_no_filter.png" class="img-fluid quarto-figure quarto-figure-center figure-img"></p>
+</figure>
+</div>
+<p>The function generated 595 grid points. While this appears okay, as we are still within our free cap, we expect to make multiple runs in a month as we test, or add on layers. Two runs will already incur us costs. We also see that a large number of these points fall on water, which means the API call is wasted in such cases. We need to remove these points to make sure we reduce the number of calls that do not generate any results.</p>
+</section>
+<section id="step-2-filtering-grid-points-reduce-points-falling-on-water" class="level1">
+<h1>Step 2: Filtering Grid Points (Reduce points falling on water)</h1>
+<p>One way to address the issue just mentioned is by filtering the points based on a reference geospatial dataset. For our case, we can choose to filter the points to only the ones that fall within the administrative (land) region of Metro Manila. This data is accessible online using sources like <a href="https://data.humdata.org/dataset/caf116df-f984-4deb-85ca-41b349d3f313">Human Data Exchange</a>. We would need a layer from ADM1 or higher to make sure that we can filter at the regional level.</p>
+<p>The filtering will be using the functions from the <a href="https://pypi.org/project/geopandas/">geopandas</a> package in order to work with geospatial data and performing geospatial operations. The following code block gives the initial version of the filtering function by performing the following steps:</p>
+<ol type="1">
+<li>Loads the shapefile into a geopandas dataframe and then filters for only the Metro Manila region. The resulting dataframe is called <code>metro_manila</code></li>
+<li>Converts the initial list of gridpoints <code>gp</code> from the current coordinates into a geo dataframe using the same reference system as the shapefile. This transforms <code>gp</code> into <code>points_gdf</code></li>
+<li>Combines metro_manila into a single shape using <code>union_all</code>, and then uses <code>within</code> to check which points in <code>points_gdf</code> fall within <code>union_all</code>. These points are the ones returned by the function.</li>
+</ol>
+<div id="4e701b86" class="cell" data-execution_count="5">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> mm_filter(gp):</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Loading the shapefile</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    shapefile_path <span class="op">=</span> <span class="st">"ADM_1_shapefile_path"</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    gdf <span class="op">=</span> gpd.read_file(shapefile_path)</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Filter for Metro Manila (ADM1_PCODE = "PH13")</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    metro_manila <span class="op">=</span> gdf[gdf[<span class="st">"ADM1_PCODE"</span>] <span class="op">==</span> <span class="st">"PH13"</span>]</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    <span class="co"># ---------------- CONVERT GRID POINTS TO GeoDataFrame ----------------</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    points_gdf <span class="op">=</span> gpd.GeoDataFrame(</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>        pd.DataFrame(gp, columns<span class="op">=</span>[<span class="st">"lat"</span>, <span class="st">"lng"</span>]),</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>        geometry<span class="op">=</span>[Point(lng, lat) <span class="cf">for</span> lat, lng <span class="kw">in</span> gp],</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>        crs<span class="op">=</span><span class="st">"EPSG:4326"</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>    metro_union <span class="op">=</span> metro_manila.geometry.union_all()</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>    filtered_points <span class="op">=</span> points_gdf[points_gdf.within(metro_union)]</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>    filtered_list <span class="op">=</span> [(point.y, point.x) <span class="cf">for</span> point <span class="kw">in</span> filtered_points.geometry]</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> filtered_list</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Running the initial points in this function generates the points below.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="grid_points_1km_filtered.png" class="img-fluid quarto-figure quarto-figure-center figure-img"></p>
+</figure>
+</div>
+<p>We see that there are now no points falling on the large bodies of water. The code actually reduced the number of points from 595 to 440, a 26% reduction.</p>
+<p>If we look closely at this new map, we see some issues though. There are areas close to water which appear to be missing a grid point. A few red boxes have been placed to highlight such places. It looks like the grid points that should be covering some part of these areas fall right on the water and were therefore excluded.</p>
+<p>A slight modification to the function is therefore introduced to make sure we still allow gridpoints that fall close to the border. We then modify the original function with the following to achieve this:</p>
+<ol type="1">
+<li>Convert the Metro Manila data frame into a meters-based system using <code>to_crs(epsg=3857)</code> (make sure to check EPSG codes if using these functions for other countries)</li>
+<li>Introduce a 1km buffer around the combined Metro Manila area using <code>buffer(1000)</code></li>
+<li>Reproject the area back to EPSG 4326, then follow the same steps for checking the input list <code>gp</code> and returning the filtered points.</li>
+</ol>
+<div id="9af63786" class="cell" data-execution_count="6">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> mm_filter_v2(gp):</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    shapefile_path <span class="op">=</span> <span class="st">"ADM_1_shapefile_path"</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    gdf <span class="op">=</span> gpd.read_file(shapefile_path)</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    metro_manila <span class="op">=</span> gdf[gdf[<span class="st">"ADM1_PCODE"</span>] <span class="op">==</span> <span class="st">"PH13"</span>]</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    points_gdf <span class="op">=</span> gpd.GeoDataFrame(</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>        pd.DataFrame(gp, columns<span class="op">=</span>[<span class="st">"lat"</span>, <span class="st">"lng"</span>]),</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>        geometry<span class="op">=</span>[Point(lng, lat) <span class="cf">for</span> lat, lng <span class="kw">in</span> gp],</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>        crs<span class="op">=</span><span class="st">"EPSG:4326"</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Introduce a buffer of 1km around Metro Manila</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Reproject to a CRS in meters</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>    metro_manila_proj <span class="op">=</span> metro_manila.to_crs(epsg<span class="op">=</span><span class="dv">3857</span>)</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>    metro_union_buffered <span class="op">=</span> metro_manila_proj.geometry.union_all().<span class="bu">buffer</span>(<span class="dv">1000</span>)</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Reproject back to WGS84 for comparison</span></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>    metro_union <span class="op">=</span> gpd.GeoSeries([metro_union_buffered], crs<span class="op">=</span><span class="st">"EPSG:3857"</span>).to_crs(epsg<span class="op">=</span><span class="dv">4326</span>).iloc[<span class="dv">0</span>]</span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>    filtered_points <span class="op">=</span> points_gdf[points_gdf.within(metro_union)]</span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>    filtered_list <span class="op">=</span> [(point.y, point.x) <span class="cf">for</span> point <span class="kw">in</span> filtered_points.geometry]</span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> filtered_list</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Running the function increases the number of points filtered from 440 to 504, but ensures that we still search all areas that lie close to the water.</p>
+</section>
+<section id="step-3-performing-the-nearby-search" class="level1">
+<h1>Step 3: Performing the Nearby Search</h1>
+<p>The Nearby Search is done by making a call using the <a href="https://pypi.org/project/requests/">requests</a> package. The request parameters will include the endpoint, and the details for the request which will be passed on in JSON format as the <code>headers</code> and <code>json</code> parameters below.</p>
+<div id="7eb97e6b" class="cell" data-execution_count="7">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Incomplete function, for illustration only</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> fetch_places(center_lat, center_lng, radius, included_types):</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Endpoint for Nearby Search</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    BASE_URL <span class="op">=</span> <span class="st">"https://places.googleapis.com/v1/places:searchNearby"</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    headers <span class="op">=</span> <span class="st">"define headers value here"</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    body <span class="op">=</span> <span class="st">"define json value here"</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    <span class="co"># API call made via:</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    response <span class="op">=</span> requests.post(BASE_URL, headers<span class="op">=</span>headers, json<span class="op">=</span>body)</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> response.status_code <span class="op">!=</span> <span class="dv">200</span>:</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>        <span class="bu">print</span>(<span class="ss">f"Error: </span><span class="sc">{</span>response<span class="sc">.</span>status_code<span class="sc">}</span><span class="ss">, </span><span class="sc">{</span>response<span class="sc">.</span>text<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> []</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>    data <span class="op">=</span> response.json()</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> data.get(<span class="st">"places"</span>, [])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The <code>headers</code> parameter is where we will include our API key, and the list of fields to return, or the field mask. While the field mask can accept the wildcard <code>"*"</code>, it is not advisable since the Nearby Search covers multiple Nearby Search SKUs based on the “most expensive” field requested. The wildcard will trigger pricing for the most expensive SKU (Nearby Search Enterprise + Atmosphere), which we currently do not need.</p>
+<div id="6486817e" class="cell" data-execution_count="8">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Enumerate fields to request</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>fields_to_include <span class="op">=</span> [</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>         <span class="st">"places.id"</span>,</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>         <span class="st">"places.displayName"</span>,</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>         <span class="st">"places.formattedAddress"</span>,</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>         <span class="st">"places.location"</span>,</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>         <span class="st">"places.types"</span>,</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>         <span class="st">"places.businessStatus"</span>,</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>         <span class="st">"places.rating"</span>,</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>         <span class="st">"places.userRatingCount"</span>,</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>         <span class="st">"places.websiteUri"</span>,</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>         <span class="st">"places.nationalPhoneNumber"</span>]</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>fields <span class="op">=</span> <span class="st">","</span>.join(fields_to_include)  </span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>headers <span class="op">=</span> {</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>      <span class="st">"Content-Type"</span>: <span class="st">"application/json"</span>,</span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>      <span class="st">"X-Goog-Api-Key"</span>: <span class="st">"API_KEY_here"</span>,</span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>      <span class="st">"X-Goog-FieldMask"</span>: fields</span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>  }</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The json parameter, which we will pass on the value of body, is where we define the specific Nearby Search parameters. This includes the search area, the type of places to include, and the number of results to return. (up to a maximum of 20) The <code>rankPreference</code> can also be defined, and we use “DISTANCE” to make sure that results are sorted and picked up based on the proximity to the center. The default mode is “POPULARITY” which might mean that big chains that fall on the overlap of search areas have a high chance of being repeated, and displace some of the less popular cafes.</p>
+<div id="3f796c8b" class="cell" data-execution_count="9">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>included_types <span class="op">=</span> [<span class="st">"cafe"</span>, <span class="st">"coffee_shop"</span>]</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>body <span class="op">=</span> {</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>        <span class="st">"locationRestriction"</span>: {</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>            <span class="st">"circle"</span>: {</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>                <span class="st">"center"</span>: {<span class="st">"latitude"</span>: <span class="st">"replace_with_gp_lat"</span>,</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>                          <span class="st">"longitude"</span>: <span class="st">"replace_with_gp_lng"</span>},</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>                <span class="st">"radius"</span>: SEARCH_RADIUS_M</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>            }</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>        },</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>        <span class="st">"rankPreference"</span>: <span class="st">"DISTANCE"</span>,</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>        <span class="st">"includedTypes"</span>: included_types,</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>        <span class="st">"maxResultCount"</span>: <span class="dv">20</span>,}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>With all the Nearby Search parameters defined, we can then run the resulting function using each of the gridpoints generated in the previous step as centers for the search areas.</p>
+<p>The initial run of our script so far produced a dataset of <strong>6150 cafes</strong> in Metro Manila which is stored in a csv file.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="pbi_initial_output_total_mm.png" class="img-fluid quarto-figure quarto-figure-center figure-img"></p>
+</figure>
+</div>
+</section>
+<section id="step-4-adding-barangay-and-city-information" class="level1">
+<h1>Step 4: Adding barangay and city information</h1>
+<p>We use the pandas package to load the data into a dataframe in order to examine the current output.</p>
+<div id="73fe1122" class="cell" data-execution_count="10">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.read_csv(<span class="st">'.\data\metro_manila_cafes.csv'</span>)</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>df.head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="10">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">place_id</th>
+<th data-quarto-table-cell-role="th">name</th>
+<th data-quarto-table-cell-role="th">address</th>
+<th data-quarto-table-cell-role="th">lat</th>
+<th data-quarto-table-cell-role="th">lng</th>
+<th data-quarto-table-cell-role="th">types</th>
+<th data-quarto-table-cell-role="th">business_status</th>
+<th data-quarto-table-cell-role="th">rating</th>
+<th data-quarto-table-cell-role="th">user_ratings_total</th>
+<th data-quarto-table-cell-role="th">website</th>
+<th data-quarto-table-cell-role="th">phone_number</th>
+<th data-quarto-table-cell-role="th">data_extracted</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>ChIJoaqhLu-zlzMRCw_dDwh7HWo</td>
+<td>Lazy Latte Cafe</td>
+<td>62, HP Building, G. Lazaro Rd, Valenzuela, 144...</td>
+<td>14.707911</td>
+<td>120.955799</td>
+<td>coffee_shop,food_store,cafe,food,point_of_inte...</td>
+<td>OPERATIONAL</td>
+<td>5.0</td>
+<td>8.0</td>
+<td>https://www.facebook.com/profile.php?id=615654...</td>
+<td>0964 968 4439</td>
+<td>2025-12-02</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>ChIJGxMZJACzlzMRvayy0yTM6tM</td>
+<td>NG SNACK CAFE</td>
+<td>Pascual Deato, Manila, Metro Manila, Philippines</td>
+<td>14.713137</td>
+<td>120.950482</td>
+<td>coffee_shop,food_store,cafe,food,point_of_inte...</td>
+<td>OPERATIONAL</td>
+<td>5.0</td>
+<td>2.0</td>
+<td>NaN</td>
+<td>0920 529 2943</td>
+<td>2025-12-02</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>ChIJ-awZBgCzlzMR4wgLf3nVNsQ</td>
+<td>But First, Coffee (BFC) - Polo Valenzuela</td>
+<td>30 Poblacion, 1 Marcelo H. Del Pilar St, Valen...</td>
+<td>14.708518</td>
+<td>120.946553</td>
+<td>coffee_shop,food_store,cafe,food,point_of_inte...</td>
+<td>OPERATIONAL</td>
+<td>5.0</td>
+<td>3.0</td>
+<td>NaN</td>
+<td>NaN</td>
+<td>2025-12-02</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>ChIJ33aDSACzlzMRcrhmFyhrFiQ</td>
+<td>R2RO’s Café</td>
+<td>289 Marcelo H. Del Pilar St, Valenzuela, 1444 ...</td>
+<td>14.715195</td>
+<td>120.952188</td>
+<td>coffee_shop,food_store,cafe,food,point_of_inte...</td>
+<td>OPERATIONAL</td>
+<td>5.0</td>
+<td>2.0</td>
+<td>https://www.facebook.com/share/1CyJcChxx4/?mib...</td>
+<td>NaN</td>
+<td>2025-12-02</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>ChIJC5UvVgGzlzMRh7_27ZBa0hs</td>
+<td>Kubo ni lola</td>
+<td>321 Pasolo Rd, Brgy. Pasolo, Valenzuela, 1444 ...</td>
+<td>14.708686</td>
+<td>120.952378</td>
+<td>coffee_shop,food_store,cafe,food,point_of_inte...</td>
+<td>OPERATIONAL</td>
+<td>5.0</td>
+<td>3.0</td>
+<td>NaN</td>
+<td>0968 507 1296</td>
+<td>2025-12-02</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<div id="ef3689ca" class="cell" data-execution_count="11">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>df.columns</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="11">
+<pre><code>Index(['place_id', 'name', 'address', 'lat', 'lng', 'types', 'business_status',
+       'rating', 'user_ratings_total', 'website', 'phone_number',
+       'data_extracted'],
+      dtype='object')</code></pre>
+</div>
+</div>
+<p>The output contains 12 columns that describe each cafe returned by the Nearby search. We want to examine the location information, since a large part of the analysis we will be performing will be location-based as we analyze cafes in a given area. It looks like that aside from the coordinates, (<code>lat</code>, <code>lng</code>) we have the location information in the address column. We can check out the first few elements using the code chunk below.</p>
+<div id="00a969ba" class="cell" data-execution_count="12">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">5</span>): <span class="bu">print</span>(df[<span class="st">'address'</span>][i])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>62, HP Building, G. Lazaro Rd, Valenzuela, 1443 Metro Manila, Philippines
+Pascual Deato, Manila, Metro Manila, Philippines
+30 Poblacion, 1 Marcelo H. Del Pilar St, Valenzuela, 1444 Metro Manila, Philippines
+289 Marcelo H. Del Pilar St, Valenzuela, 1444 Metro Manila, Philippines
+321 Pasolo Rd, Brgy. Pasolo, Valenzuela, 1444 Metro Manila, Philippines</code></pre>
+</div>
+</div>
+<p>With just the first five elements, while it looks like we can derive the city for each of them, we see that the cannot identify which barangay each cafe belongs to. The fifth and maybe the second item have the barangay before the city name, but the rest clearly do not. They only show the street name before the city.</p>
+<p>An approach we can take to tag barangay and city information will be through the use of shapefiles, similar to what we did in Step 2. Instead of filtering, we would be using geopandas to find where each cafe is.</p>
+<p>We perform this while creating a “master file”. Creating a masterfile, is done since we only need to have one record for each cafe. The file generated previously includes a “data_extracted” column to track any changes in the cafe details overtime– especially cafe closures, additions, ratings.</p>
+<p>The function below performs the following:</p>
+<ol type="1">
+<li>Loads the file with the cafe dataset and, if it exists, the existing masterfile</li>
+<li>Finds cafes that are not in the masterfile that need to be tagged and added to the masterfile</li>
+<li>Converts the cafes into a geopandas dataframe <code>cafes_gdf</code> and loads the ADM4 shapefile into another geodataframe <code>admin_gdf</code></li>
+<li>Merges <code>cafes_gdf</code> and <code>admin_gdf</code> using a spatial join <code>sjoin</code>.</li>
+<li>Writes the relevant columns into the masterfile. Additional columns for future steps: <code>Group</code>, and <code>Include</code> are also added to the file with default values</li>
+</ol>
+<div id="2079e8f0" class="cell" data-execution_count="13">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> create_master(input_file<span class="op">=</span><span class="st">'.\data\metro_manila_cafes.csv'</span>, master_file<span class="op">=</span><span class="st">'.\data\metro_manila_cafes_master.csv'</span>):</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Load ADM4 Shapefile</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>    shapefile_path <span class="op">=</span> <span class="st">"shapefile_path_up_to_ADM4"</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Load inputs data</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>    cafes_df <span class="op">=</span> pd.read_csv(input_file)</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>    <span class="co"># If master file exists, load it and filter new cafes</span></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> os.path.exists(master_file):</span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>        master_df <span class="op">=</span> pd.read_csv(master_file)</span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>        existing_ids <span class="op">=</span> <span class="bu">set</span>(master_df[<span class="st">"place_id"</span>])</span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>        cafes_df <span class="op">=</span> cafes_df[<span class="op">~</span>cafes_df[<span class="st">"place_id"</span>].isin(existing_ids)]</span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a>        <span class="bu">print</span>(<span class="ss">f"Master file exists. Found </span><span class="sc">{</span><span class="bu">len</span>(cafes_df)<span class="sc">}</span><span class="ss"> new cafes to process."</span>)</span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">else</span>:</span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a>        master_df <span class="op">=</span> pd.DataFrame(columns<span class="op">=</span>[</span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a>            <span class="st">"place_id"</span>, <span class="st">"name"</span>, <span class="st">"address"</span>, <span class="st">"lat"</span>, <span class="st">"lng"</span>, <span class="st">"data_extracted"</span>,</span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a>            <span class="st">"ADM2_EN"</span>, <span class="st">"ADM3_EN"</span>, <span class="st">"ADM4_EN"</span>, <span class="st">"Group"</span>, <span class="st">"Include"</span></span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a>        ])</span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a>        <span class="bu">print</span>(<span class="ss">f"No master file found. Processing all </span><span class="sc">{</span><span class="bu">len</span>(cafes_df)<span class="sc">}</span><span class="ss"> cafes."</span>)</span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a>    <span class="co"># If no new cafes, exit early</span></span>
+<span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> cafes_df.empty:</span>
+<span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a>        <span class="bu">print</span>(<span class="st">"No new cafes to process. Exiting."</span>)</span>
+<span id="cb15-24"><a href="#cb15-24" aria-hidden="true" tabindex="-1"></a>    <span class="cf">else</span>:</span>
+<span id="cb15-25"><a href="#cb15-25" aria-hidden="true" tabindex="-1"></a>        <span class="co"># ---------------- CONVERT TO GeoDataFrame ----------------</span></span>
+<span id="cb15-26"><a href="#cb15-26" aria-hidden="true" tabindex="-1"></a>        cafes_gdf <span class="op">=</span> gpd.GeoDataFrame(</span>
+<span id="cb15-27"><a href="#cb15-27" aria-hidden="true" tabindex="-1"></a>            cafes_df,</span>
+<span id="cb15-28"><a href="#cb15-28" aria-hidden="true" tabindex="-1"></a>            geometry<span class="op">=</span>[Point(xy) <span class="cf">for</span> xy <span class="kw">in</span> <span class="bu">zip</span>(cafes_df.lng, cafes_df.lat)],</span>
+<span id="cb15-29"><a href="#cb15-29" aria-hidden="true" tabindex="-1"></a>            crs<span class="op">=</span><span class="st">"EPSG:4326"</span></span>
+<span id="cb15-30"><a href="#cb15-30" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb15-31"><a href="#cb15-31" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb15-32"><a href="#cb15-32" aria-hidden="true" tabindex="-1"></a>        <span class="co"># ---------------- LOAD SHAPEFILE ----------------</span></span>
+<span id="cb15-33"><a href="#cb15-33" aria-hidden="true" tabindex="-1"></a>        admin_gdf <span class="op">=</span> gpd.read_file(shapefile_path)</span>
+<span id="cb15-34"><a href="#cb15-34" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb15-35"><a href="#cb15-35" aria-hidden="true" tabindex="-1"></a>        enriched_gdf <span class="op">=</span> gpd.sjoin(cafes_gdf, admin_gdf, how<span class="op">=</span><span class="st">"left"</span>, predicate<span class="op">=</span><span class="st">"within"</span>)</span>
+<span id="cb15-36"><a href="#cb15-36" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb15-37"><a href="#cb15-37" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Retain required columns</span></span>
+<span id="cb15-38"><a href="#cb15-38" aria-hidden="true" tabindex="-1"></a>        enriched_df <span class="op">=</span> enriched_gdf[[</span>
+<span id="cb15-39"><a href="#cb15-39" aria-hidden="true" tabindex="-1"></a>            <span class="st">"place_id"</span>, <span class="st">"name"</span>, <span class="st">"address"</span>, <span class="st">"lat"</span>, <span class="st">"lng"</span>, <span class="st">"data_extracted"</span>, <span class="st">"ADM2_EN"</span>, <span class="st">"ADM3_EN"</span>, <span class="st">"ADM4_EN"</span></span>
+<span id="cb15-40"><a href="#cb15-40" aria-hidden="true" tabindex="-1"></a>        ]].copy()</span>
+<span id="cb15-41"><a href="#cb15-41" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb15-42"><a href="#cb15-42" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Add default columns</span></span>
+<span id="cb15-43"><a href="#cb15-43" aria-hidden="true" tabindex="-1"></a>        enriched_df[<span class="st">"Group"</span>] <span class="op">=</span> <span class="st">"New Record"</span></span>
+<span id="cb15-44"><a href="#cb15-44" aria-hidden="true" tabindex="-1"></a>        enriched_df[<span class="st">"Include"</span>] <span class="op">=</span> <span class="st">"Yes"</span></span>
+<span id="cb15-45"><a href="#cb15-45" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb15-46"><a href="#cb15-46" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Append to master</span></span>
+<span id="cb15-47"><a href="#cb15-47" aria-hidden="true" tabindex="-1"></a>        master_df <span class="op">=</span> pd.concat([master_df, enriched_df], ignore_index<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb15-48"><a href="#cb15-48" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb15-49"><a href="#cb15-49" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Save updated master file</span></span>
+<span id="cb15-50"><a href="#cb15-50" aria-hidden="true" tabindex="-1"></a>        master_df.to_csv(master_file, index<span class="op">=</span><span class="va">False</span>, encoding<span class="op">=</span><span class="st">"utf-8"</span>)</span>
+<span id="cb15-51"><a href="#cb15-51" aria-hidden="true" tabindex="-1"></a>        <span class="bu">print</span>(<span class="ss">f"Updated master file saved with </span><span class="sc">{</span><span class="bu">len</span>(master_df)<span class="sc">}</span><span class="ss"> total cafes."</span>)</span>
+<span id="cb15-52"><a href="#cb15-52" aria-hidden="true" tabindex="-1"></a>        <span class="bu">print</span>(<span class="st">"Preview of last 5 rows added:"</span>)</span>
+<span id="cb15-53"><a href="#cb15-53" aria-hidden="true" tabindex="-1"></a>        <span class="bu">print</span>(enriched_df.tail())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Once the code runs, we can use the following code to run a quick query on the top 5 cities and barnagays with the most cafes.</p>
+<div id="d8f1c1c6" class="cell" data-execution_count="14">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.read_csv(<span class="st">'.\data\metro_manila_cafes_master.csv'</span>)</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Top 5 Cities in Metro Manila with the most cafes"</span>)</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>df[<span class="st">"ADM3_EN"</span>].value_counts().head()</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\n</span><span class="st">Top 5 Barangays in Metro Manila with the most cafes"</span>)</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>df[[<span class="st">"ADM4_EN"</span>,<span class="st">"ADM3_EN"</span>]].value_counts().head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Top 5 Cities in Metro Manila with the most cafes
+
+Top 5 Barangays in Metro Manila with the most cafes</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="14">
+<pre><code>ADM4_EN        ADM3_EN          
+B. F. Homes    City of Parañaque    95
+Talon Dos      City of Las Piñas    75
+Don Bosco      City of Parañaque    74
+Batasan Hills  Quezon City          71
+Pasong Tamo    Quezon City          65
+Name: count, dtype: int64</code></pre>
+</div>
+</div>
+</section>
+<section id="step-5-tagging-cafe-chains-based-on-names" class="level1">
+<h1>Step 5: Tagging Cafe chains based on names</h1>
+<p>The last data processing step we will cover in this post is the addition of tags to identify cafes that belong to the same name or chain. We created a column <code>Group</code> in the masterfile to capture this information, but assigned a default value of “TBC” for now.</p>
+<p>We will do initial tagging based on an inspection of the cafe names. This is by checking the presence of specific substrings in the name, and then using a dictionary of group and substrings to mark cafes. While this can be done manually, we can use some code to help us identify candidate substrings and cafe chains.</p>
+<p>The idea will be to go through the cafe names and check which sequences of words appear commonly in the field– this should point to potential cafe chains. We limit the length of the sequence to 2-4 words. Single words might not be very useful since we expect a lot of noise with words like coffee, cafe, tea, etc., as well as articles to pop up in the results. We also limit to 4 words since we don’t expect brand or chain names to be any longer, most of them should be evident with even less.</p>
+<p>The code below does this by tokenizing the words and creating 2-, 3- and 4-grams, The <a href="https://docs.python.org/3/library/collections.html#collections.Counter">Counter class</a> from the collections package is used to count each n-gram as the code encounters them as it runs through the list of names. The code also includes displaying the top 20 n-grams.</p>
+<div id="4a276bf8" class="cell" data-execution_count="15">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> collections <span class="im">import</span> Counter</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> re</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a><span class="co"># df already is loaded with the masterfile</span></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>names <span class="op">=</span> df[<span class="st">'name'</span>].dropna().tolist()</span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> get_ngrams(text, n):</span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>    words <span class="op">=</span> re.findall(<span class="vs">r'\w+'</span>, text.lower())  <span class="co"># tokenize words</span></span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="bu">zip</span>(<span class="op">*</span>[words[i:] <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(n)])  <span class="co"># create n-grams</span></span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Collect all n-grams</span></span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>ngrams_counter <span class="op">=</span> Counter()</span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> name <span class="kw">in</span> names:</span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> n <span class="kw">in</span> [<span class="dv">2</span>, <span class="dv">3</span>, <span class="dv">4</span>]:</span>
+<span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a>        ngrams_counter.update([<span class="st">' '</span>.join(ngram) <span class="cf">for</span> ngram <span class="kw">in</span> get_ngrams(name, n)])</span>
+<span id="cb19-18"><a href="#cb19-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-19"><a href="#cb19-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Convert to DataFrame</span></span>
+<span id="cb19-20"><a href="#cb19-20" aria-hidden="true" tabindex="-1"></a>ngrams_df <span class="op">=</span> pd.DataFrame(ngrams_counter.items(), columns<span class="op">=</span>[<span class="st">'ngram'</span>, <span class="st">'count'</span>]).sort_values(by<span class="op">=</span><span class="st">'count'</span>, ascending<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb19-21"><a href="#cb19-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-22"><a href="#cb19-22" aria-hidden="true" tabindex="-1"></a>ngrams_df.head(<span class="dv">20</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="15">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">ngram</th>
+<th data-quarto-table-cell-role="th">count</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">1973</td>
+<td>pickup coffee</td>
+<td>110</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">556</td>
+<td>s cafe</td>
+<td>88</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">212</td>
+<td>milk tea</td>
+<td>80</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">590</td>
+<td>s coffee</td>
+<td>65</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">1379</td>
+<td>zus coffee</td>
+<td>63</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">631</td>
+<td>the coffee</td>
+<td>61</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">591</td>
+<td>coffee shop</td>
+<td>58</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">5330</td>
+<td>coffee bean</td>
+<td>46</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">8</td>
+<td>coffee bfc</td>
+<td>46</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">15</td>
+<td>but first coffee bfc</td>
+<td>46</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">7</td>
+<td>first coffee</td>
+<td>46</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">6</td>
+<td>but first</td>
+<td>46</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">11</td>
+<td>but first coffee</td>
+<td>46</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">12</td>
+<td>first coffee bfc</td>
+<td>46</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">5332</td>
+<td>tea leaf</td>
+<td>44</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">19791</td>
+<td>las piñas</td>
+<td>43</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">529</td>
+<td>quezon city</td>
+<td>42</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">300</td>
+<td>coffee tea</td>
+<td>39</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">5336</td>
+<td>the coffee bean</td>
+<td>39</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">86</td>
+<td>kkopi tea</td>
+<td>39</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>Based on the top 20 n-grams, we are able to spot a few chain names like: <strong>Pickup Coffee</strong>, <strong>Zus Coffee</strong>, <strong>But First, Coffee</strong>, <strong>Coffee Bean and Tea Leaf</strong>, <strong>Kkopi Tea</strong>. The longer list should be examined to find other recurring n-grams. It is also worth noting that this will not surface any chain names with only one words– like <strong>Starbucks</strong>. While the user can rerun the code for only single words, if they want to have the code help them identify these.</p>
+<p>The identified brands/chains and their keywords can be defined in a function like the one below which can be used to check a cafe name and return the chain name if there is a match in the dictionary, or return “TBC” otherwise.</p>
+<div id="3c2bb3d2" class="cell" data-execution_count="16">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Complete dictionary not included</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> assign_group(name):</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>    brand_dict <span class="op">=</span> {</span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>        <span class="st">"B1T1 Takeaway Coffee"</span>: [<span class="st">"b1t1"</span>],</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>        <span class="st">"Big Brew"</span>: [<span class="st">"big brew"</span>, <span class="st">"bigbrew"</span>],</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>        <span class="st">"Black Scoop Cafe"</span>: [<span class="st">"black scoop"</span>, <span class="st">"blackscoop"</span>],</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>        <span class="st">"But First, Coffee"</span>: [<span class="st">"but first, coffee"</span>],</span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>        <span class="st">"CBTL"</span>: [<span class="st">"coffee bean &amp; tea leaf"</span>, <span class="st">"cbtl"</span>],</span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>        <span class="st">"Dunkin"</span>: [<span class="st">"dunkin"</span>],</span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>        <span class="st">"Highlands Coffee"</span>: [<span class="st">"highlands"</span>],</span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>        <span class="st">"Kkopi.Tea"</span>: [<span class="st">"kkopi.tea"</span>],</span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>        <span class="st">"Starbucks"</span>: [<span class="st">"starbucks"</span>],</span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>        <span class="st">"Zus Coffee"</span>: [<span class="st">"zus coffee"</span>],</span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a>        <span class="st">"% Arabica"</span>: [<span class="st">"% arabica"</span>, <span class="st">"arabica manila"</span>]</span>
+<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a>    name_lower <span class="op">=</span> name.lower()</span>
+<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> brand, keywords <span class="kw">in</span> brand_dict.items():</span>
+<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="bu">any</span>(keyword <span class="kw">in</span> name_lower <span class="cf">for</span> keyword <span class="kw">in</span> keywords):</span>
+<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> brand</span>
+<span id="cb20-20"><a href="#cb20-20" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="st">"TBC"</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We run the current master in the above function, and get the below summary visuals.</p>
+<div id="7e5ebd9c" class="cell" data-execution_count="17">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>df_grouped <span class="op">=</span> pd.read_csv(<span class="st">".\data\metro_manila_cafes_master_grouped.csv"</span>)</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"There are "</span>,<span class="bu">sum</span>(df_grouped[<span class="st">"Group"</span>]<span class="op">==</span><span class="st">"TBC"</span>),<span class="st">" cafes marked as TBC</span><span class="ch">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>There are  4912  cafes marked as TBC
+</code></pre>
+</div>
+</div>
+<div id="ac88347b" class="cell" data-execution_count="18">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Get value counts</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>group_counts <span class="op">=</span> df_grouped[df_grouped[<span class="st">"Group"</span>] <span class="op">!=</span> <span class="st">"TBC"</span>][<span class="st">"Group"</span>].value_counts().head(<span class="dv">15</span>)</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot bar chart</span></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>plt.figure(figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="dv">5</span>))</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>bars <span class="op">=</span> group_counts.plot(kind<span class="op">=</span><span class="st">'bar'</span>, color<span class="op">=</span><span class="st">'skyblue'</span>, edgecolor<span class="op">=</span><span class="st">'black'</span>)</span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>plt.title(<span class="st">"Top 15 Tagged Groups with most Cafes (Excluding TBC)"</span>)</span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>plt.xlabel(<span class="st">"Group"</span>)</span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a>plt.ylabel(<span class="st">"Number of Cafes"</span>)</span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a>plt.xticks(rotation<span class="op">=</span><span class="dv">45</span>, ha<span class="op">=</span><span class="st">'right'</span>, fontsize<span class="op">=</span><span class="dv">6</span>)</span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-13"><a href="#cb23-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Add data labels on top of each bar</span></span>
+<span id="cb23-14"><a href="#cb23-14" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i, value <span class="kw">in</span> <span class="bu">enumerate</span>(group_counts):</span>
+<span id="cb23-15"><a href="#cb23-15" aria-hidden="true" tabindex="-1"></a>    plt.text(i, value <span class="op">+</span> <span class="dv">1</span>, <span class="bu">str</span>(value), ha<span class="op">=</span><span class="st">'center'</span>, va<span class="op">=</span><span class="st">'bottom'</span>, fontsize<span class="op">=</span><span class="dv">6</span>)</span>
+<span id="cb23-16"><a href="#cb23-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-17"><a href="#cb23-17" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb23-18"><a href="#cb23-18" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-19-output-1.png" width="950" height="469" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<div id="38ebaf13" class="cell" data-execution_count="19">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Get value counts</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>group_counts <span class="op">=</span> df_grouped[df_grouped[<span class="st">"Group"</span>] <span class="op">!=</span> <span class="st">"TBC"</span>][<span class="st">"Group"</span>].value_counts().tail(<span class="dv">15</span>)</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot bar chart</span></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>plt.figure(figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="dv">5</span>))</span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>bars <span class="op">=</span> group_counts.plot(kind<span class="op">=</span><span class="st">'bar'</span>, color<span class="op">=</span><span class="st">'skyblue'</span>, edgecolor<span class="op">=</span><span class="st">'black'</span>)</span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a>plt.title(<span class="st">"Bottom 15 Tagged Groups with most Cafes (Excluding TBC)"</span>)</span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>plt.xlabel(<span class="st">"Group"</span>)</span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a>plt.ylabel(<span class="st">"Number of Cafes"</span>)</span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a>plt.xticks(rotation<span class="op">=</span><span class="dv">45</span>, ha<span class="op">=</span><span class="st">'right'</span>, fontsize<span class="op">=</span><span class="dv">6</span>)</span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Add data labels on top of each bar</span></span>
+<span id="cb24-14"><a href="#cb24-14" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i, value <span class="kw">in</span> <span class="bu">enumerate</span>(group_counts):</span>
+<span id="cb24-15"><a href="#cb24-15" aria-hidden="true" tabindex="-1"></a>    plt.text(i, value <span class="op">+</span> <span class="dv">1</span>, <span class="bu">str</span>(value), ha<span class="op">=</span><span class="st">'center'</span>, va<span class="op">=</span><span class="st">'bottom'</span>, fontsize<span class="op">=</span><span class="dv">6</span>)</span>
+<span id="cb24-16"><a href="#cb24-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-17"><a href="#cb24-17" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb24-18"><a href="#cb24-18" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cell-20-output-1.png" width="950" height="463" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>A few observations can be made from this initial output:</p>
+<ul>
+<li><p>Some cafes, unsurprisingly, appear with high numbers. This includes <strong>Starbucks</strong>, <strong>Pickup Coffee</strong>, <strong>BFC</strong> and <strong>CBTL</strong>. One cafe stands out: <strong>Big Brew</strong>. I am not familiar with this chain, but it looks like there are a lot of branches in the region. It is worth checking this out as they appear to have a very big presence in the overall cafe business.</p></li>
+<li><p><strong>7-Eleven</strong> is being picked up since they serve coffee, but they only appear twice in the data. This points out inconsistencies in how places are tagged. We need to understand if this is a cafe player that we need to include or exclude, and then modify our workflow accordingly. (i.e., by finding a way to capture 7-11 in the next extract, or filter them out)</p></li>
+</ul>
+<p>Additional work needs to be done on the tagging, but we are off to a good start since we have captured a large number of the big chains already.</p>
+</section>
+<section id="next-steps" class="level1">
+<h1>Next Steps</h1>
+<p>We end the post here, but there are still a number of steps needed to build a satisfactory database for us to work with for performing market analysis. Some of these steps include:</p>
+<ol type="1">
+<li><p>Additional data cleaning and data enrichment for the current dataset</p></li>
+<li><p>Analysis of the cleaned up cafa dataset</p></li>
+<li><p>Addition of complementary layer(s), like ones to represent demand centers</p></li>
+<li><p>Incorporate additional data sources with new dimensions</p></li>
+<li><p>Analysis of the combined data set</p></li>
+<li><p>Scheduled updates and/or cloud deployment</p></li>
+</ol>
+<p>I will try to cover most of the steps in separate future posts, so stay tuned. I look forward to getting this database in a decent state by the middle of next year, so I hope you don’t have to wait too long.</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    // For code content inside modals, clipBoardJS needs to be initialized with a container option
+    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
