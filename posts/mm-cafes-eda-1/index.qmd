@@ -1,0 +1,827 @@
+---
+title: "Geospatial Analysis of Metro Manila Cafes - Part 1"
+author: "Derek Rodriguez"
+date: "2026-01-12"
+date-modified: "last-modified"
+categories: [R, Geospatial Analysis, Metro Manila]
+image: "Taguig-KDE.jpg"
+execute: 
+  eval: true
+  echo: true
+  message: false
+  freeze: true
+---
+
+This is a continuation to [my previous post on the topic](https://datawithderek.netlify.app/posts/mm-cafes-creating-gmaps-db/). Since we have a good amount of data in our hands, I wanted to run some initial exploratory analysis using a combination of non-spatial and spatial techniques. This post will use relatively basic technique and will only be looking at one layer of spatial data– the cafes in Metro Manila and their locations.
+
+# Objectives
+
+For this post, we will have the following objectives:
+
+1.  Apply non-spatial techniques to analyze and describe the Metro Manila cafe data extracted using the Google Places API;
+
+2.  Apply spatial techniques to analyze the same data visually
+
+We will use the appropriate packages in R in order to perform the different analyses (spatial and otherwise) to support our answers to the above questions. The same analyses should also be possible in Python, but I have chosen R as I am more familiar with it, and also, since these posts are produced in R Studio, I am hoping that I encounter less issues when running code blocks with R.
+
+# Data Sources - Our MM Cafe Database
+
+The data we are using comes from two main sources:
+
+1.  GoogleMaps - Using the [Places API's Nearby Search](https://developers.google.com/maps/documentation/places/web-service/nearby-search), we compiled a database of cafes in Metro Manila by performing an API call at regular spaced intervals in the (padded) boundary of the region.
+2.  [Humanitarian Data Exchange (HDX)](https://data.humdata.org/) - HDX is an open data platform managed by UN OCHA. (Office for the Coordination of Humanitarian Affairs) From this platform, we sourced [geospatial datasets for the administrative boundaries in the Philippines](https://data.humdata.org/dataset/cod-ab-phl). This has been used in the construction of the current database, but will also be used for the analysis that we will be performing later as we perform our analyses.
+
+You may refer to [my previous post](https://datawithderek.netlify.app/posts/mm-cafes-creating-gmaps-db/) to see how we built the database in more detail. The data we will be using is based on an updated run a month after the post last December 2025. This also applies some of the modifications mentioned in the latter half of the post, which increased the number of grid points, or search points, and ultimately the number of cafes returned.
+
+# Loading R Packages
+
+We load the following packages into our environment using `p_load()` of the [**pacman**](https://cran.r-project.org/web/packages/pacman/index.html) package. We use pacman so that any packages that are not installed will be automatically installed. If all packages are already installed, then the code block is equivalent to a call of `library()` to load the packages.
+
+::: panel-tabset
+#### Package Descriptions
+
+The loaded packages include:
+
+-   **sf -** package for importing, managing and processing vector-based geospatial data
+
+-   **tidyverse -** collection of packages for performing data importation, wrangling and visualization
+
+-   **tmap -** package with functions for plotting cartographic quality maps
+
+-   **plotly** - package for the creation of interactive data visualizations
+
+-   **spatstat** - a package for point pattern analysis
+
+-   **stars** - used for working with raster and vector data cubes
+
+#### Package Installation and Loading
+
+```{r}
+pacman::p_load(sf, tmap, tidyverse, plotly, spatstat, stars)
+```
+:::
+
+# Data Loading and Preparation
+
+## Dataset 1. Cafe Database (Raw)
+
+We load the current cafe database into an R dataframe `mm_cafe_raw` using `read_csv()`.
+
+```{r}
+mm_cafe_raw <- read_csv("data/aspatial/metro_manila_cafes_master.csv")
+```
+
+The output displays that 12,024 records were returned across 11 columns. The 11 columns are listed, and it is shown that 9 of them are character/strings while 2 of them are numeric. We know that the dataset includes the output from both of the runs, and the `data_extracted` column gives the date when they were extracted. We can show these dates using `distinct()` which comes with tidyverse.
+
+```{r}
+distinct(mm_cafe_raw, data_extracted)
+```
+
+The output shows that there are two values– one for 2 Dec 2025, and another for 5 Jan 2026. This means that there would be duplicates across the data as most of the cafes from the previous run should also be there in the latest one. In order to make sure we do not miss any data, we will just remove any duplicate places. For this post, we will make sure that coordinates need to be unique since we do not want any overlap in locations at the moment. We use the code block below to remove duplicated values for `lat` and `lng`. (the latitude and the longitude) We also run `glimpse()` in the same code block to give us the number of records, as well as the first few entries for each column.
+
+```{r}
+mm_cafe_raw <- mm_cafe_raw %>%
+  distinct(lat, lng, .keep_all = TRUE, .fromLast = TRUE)
+
+glimpse(mm_cafe_raw)
+```
+
+We see that we are still left with a large number– 11,812 cafes, which we will use for our analyses. While we have already finalized the records to use, we see that we can clean up and remove and rename the columns to make analyses easier:
+
+-   Remove columns that give no value for planned analyses: `place_id`, `address`, `data_extracted`, `ADM2_EN`, `Include`
+
+-   Rename columns: `ADM3_EN` to `City`, `ADM4_EN` to `Barangay`
+
+The first code block below executes these two operations using a pipeline with `select()` and `rename()`. The second code block uses `head()` to display the first rows of the resulting dataframe.
+
+```{r}
+mm_cafe_raw <- mm_cafe_raw %>%
+  select(
+    -place_id,
+    -address,
+    -data_extracted,
+    -ADM2_EN,
+    -Include
+  ) %>%
+  rename(
+    City = ADM3_EN,
+    Barangay = ADM4_EN
+  )
+```
+
+```{r}
+head(mm_cafe_raw)
+```
+
+## Dataset 2. Metro Manila Boundaries
+
+The next step is to prepare the dataset that would contain the information on the boundaries of cities and barangays (towns) within Metro Manila. The dataset we have is for the whole of Philippines, so we will first load that into an sf dataframe using `st_read()` from the sf package.
+
+```{r}
+
+phil_sf <- st_read(dsn="data/geospatial",
+                       layer="phl_admbnda_adm4_psa_namria_20231106")
+```
+
+The output shows that the dataset includes 42,048 features or records, which should correspond to that many barangays across the whole country. The output also shows that there are 17 fields in the dataframe. We can again use `glimpse()` to give us the first few elements
+
+```{r}
+glimpse(phil_sf)
+```
+
+We are only focusing on analyzing cafes in Metro Manila in this post, so we can just work with records that correspond to the region. This should be contained in the column `ADM1_EN`, and the following code gives the unique values (Region names) in the dataset.
+
+```{r}
+unique(phil_sf$ADM1_EN)
+```
+
+There are 17 region names appearing and Metro Manila should be indicated by the 13th name on the list: National Capital Region (NCR)
+
+We can now create the sf dataframe for Metro Manila (to be named `mm_sf`) using the following transformations:
+
+1.  Filter `phil_sf` on `ADMI_EN` and only keep the rows where the value is "National Capital Region (NCR)"
+2.  Keep only required columns. Remove ADM columns except for barangay and city names and codes. Remove date columns. Remove dimension columns except AREA_SQKM. This means only keeping the following columns: ADM3_EN, ADM3_PCODE, ADM4_EN, ADM4_PCODE, AREA_SQKM, and the geometry.
+3.  Rename city and barangay columns so they are more descriptive.
+
+The following code block executes these changes, and then uses `glimpse()` to show a summary of the new dataframe.
+
+```{r}
+mm_sf <- phil_sf[phil_sf$ADM1_EN == "National Capital Region (NCR)", ] |>
+  select(ADM4_EN, ADM4_PCODE, ADM3_EN, ADM3_PCODE, AREA_SQKM) |>
+  rename(
+    City = ADM3_EN,
+    CityCode = ADM3_PCODE,
+    Barangay = ADM4_EN,
+    BarangayCode = ADM4_PCODE
+  )
+
+glimpse(mm_sf)
+```
+
+The new dataframe is shown to have 1712 rows across 6 columns– compared to the 42K rows across 18 columns from the full Philippine dataset.
+
+## Dataset 3. Transforming the Cafe Database into an sf dataframe
+
+In order to make the two datasets work together, we will convert `mm_cafe_raw` into an sf dataframe that can work with `mm_sf`.
+
+To perform the transformation, the following code block executes the following steps:
+
+1.  Run the function `st_as_sf()` on `mm_cafe_raw` to convert it into an sf dataframe. The parameters used indicate the columns with the coordinates (`coords`), the current CRS (reference system) used for the coordinates (`crs`), and whether the other columns are to be removed. (`remove`)
+2.  `st_transform()` allows the transformation of one sf dataframe into a new CRS, while `st_crs()` returns the CRS for an sf dataframe. The final line of code then makes sure that `mm_cafe_sf` will end up with the same CRS as `mm_sf`.
+
+```{r}
+mm_cafe_sf <- mm_cafe_raw %>%
+  st_as_sf(
+    coords = c("lng", "lat"),   # order is LONGITUDE, then LATITUDE
+    crs = 4326,                 # WGS84 (typical for lat/lng)
+    remove = FALSE
+  ) |>
+  st_transform(st_crs(mm_sf))   # match CRS of mm_sf
+```
+
+We can then use the tmap package to visualize these two dataframes as layers in a map to see if they have been loaded and transformed properly. The code block below first converts any improperly encoded characters in the cafe name to prevent any errors, before generating an interactive thematic map using the two layers.
+
+```{r}
+mm_cafe_sf$name <- iconv(mm_cafe_sf$name, from = "", to = "UTF-8", sub = "byte")
+
+tmap_mode("view")   # interactive mode
+
+tm_shape(mm_sf) +
+  tm_polygons(
+    col = "white",
+    border.col = "grey40",
+    alpha = 0.4
+  ) +
+tm_shape(mm_cafe_sf) +
+  tm_dots(
+    col = "red",
+    size = 0.05,
+    popup.vars = c("Café Name" = "name")   # hover/mouseover label
+  ) +
+tm_basemap("OpenStreetMap") +
+tm_layout(
+  title = "Metro Manila Cafés",
+  frame = FALSE
+)
+
+tmap_mode("plot") # ends interactive mode and closes the connection
+```
+
+The rendered map looks okay so we can assume that the transformations we have done have worked properly.
+
+# Exploratory Data Analysis
+
+For this post, our data analysis will focus on the locations of the cafe, especially their cities and barangays. We will focus on answering the following (sets of) questions:
+
+1.  Which cities and barangays have the highest number of cafes?
+2.  Which cities, barangays or locations have the highest densities of cafes?
+
+## Question 0.1: What are cities and barangays in Metro Manila?
+
+Before we answer the main questions, it is a good idea to understand which, and how many, locations we are working with.
+
+We can use `distinct()` to return the list of cities (`mm_sf$City`) and `n_distinct()` to simply count them.
+
+```{r}
+distinct(mm_sf, City)
+
+n_distinct(mm_sf$City)
+```
+
+Based on the output, there are 17 cities in Metro Manila. We expect that the number will be quite large so we will not attempt to display all the names. First, we can use the code block below to display the number of barangays across Metro Manila, using two options that give the same result.
+
+The first line of code here does a few things.
+
+1.  `st_drop_geometry()` removes the geometry column from an sf dataframe to ensure that it doesn't interfere with the outer functions
+2.  We then use `select()` to focus on both `City` and `Barangay`. I am sure that city names in Metro Manila are unique, but the same does not hold true for barangays. If we use the names, then we would need to look across both to properly count unique barangays
+3.  Finally, `n_distinct()` counts unique rows from step #2
+
+The second line of code should produce the same result by just counting the unique barangay codes– which we expect to also be equal to the length of the dataframe.
+
+```{r}
+n_distinct(select(st_drop_geometry(mm_sf), City, Barangay))
+n_distinct(mm_sf$BarangayCode)
+```
+
+This shows that there are 1712 barangays in Metro Manila based on the information in `mm_sf`. We can also use the following code to show the number of barangays per city. The code block below again takes the unique value sof `City` and `Barangay` and then outputs a table with the count of barangays per city arranged in descending order.
+
+```{r}
+mm_sf |>
+  st_drop_geometry() %>%
+  distinct(City, Barangay) %>%
+  count(City, name = "num_of_barangays") %>%
+  arrange(desc(num_of_barangays))
+
+```
+
+The output shows that there are 4 cities with more than 140 barangays each while the other (13) cities have 33 or less. The City of Manila has 899 cities which is more than 4x of the second on the list. This extreme distribution in the number of barangays is alarming. Are these cities very different in size or are the barangays much smaller in one city versus another?
+
+## Question 0.2: What can we tell about the size (land area) of the cities and barangays?
+
+While our main focus is on the number of cafes, it is still worth to understand differences in the land area of the different cities and barangays. Number is only one dimension we will look at, but to account for differences in area, we will also be looking at the density of cafes– which takes area into account.
+
+Our dataframe includes a column for the land area, and is given in `AREA_SQKM`, but we can also recompute the area ourselves to be sure that measurement across the different barangays is consistent. This is done in the following code block by:
+
+1.  Computing for the area of each row/barangay in square meters using `st_area()` and dividing it by 1,000,000 to convert it to square kilometers
+2.  `mutate()` creates a new column in the dataframe based on the output from step 1
+3.  We use `relocate()` to make sure that the new column is not added after the geometry column and keep our structure clean.
+
+```{r}
+mm_sf <- mm_sf %>%
+  mutate(
+    computed_area_km2 = as.numeric(st_area(geometry)) / 1e6
+  ) %>%
+  relocate(computed_area_km2, .before = geometry)
+```
+
+We can check if the just computed areas match with the ones that were provided or came with the dataset visually using a boxplot. The code below computes for the percentage difference between `computed_area_km2` and `AREA_SQKM` and then produces a boxplot using the ggplot package which comes with tidyverse.
+
+```{r}
+mm_sf %>%
+  mutate(area_diff = (computed_area_km2 - AREA_SQKM)/AREA_SQKM * 100) %>%
+  ggplot(aes(y = area_diff)) +
+  geom_boxplot(fill = "steelblue", alpha = 0.7) +
+  labs(
+    title = "Percent Difference Between Computed and Provided Area",
+    y = "% Difference"
+  ) +
+  theme_minimal()
+```
+
+The plot shows that there is a minor difference of around 0.36%, with the computed value always being higher than the provided number. The median difference is roughly 0.3635%. Given this, we can use either set of measurements, so we will just go ahead and use the computed values or `computed_area_km2`.
+
+What we can do is visualize the metrics for the different cities– the number of barangays, the total city size, and the avarage size per barangay. With three numeric variables, we can achieve this using a bubble scatterplot where the x-value, the y-value and the bubble size will represent the different variables. The code block below produces this visual. An interactive chart is used to show the different values when the user mouses over a bubble, so there is minimal clutter on the chart.
+
+```{r}
+
+mm_summary <- mm_sf %>%
+  st_drop_geometry() %>%
+  group_by(City) %>%
+  summarise(
+    n_barangays = n(),
+    total_area = sum(computed_area_km2, na.rm = TRUE),
+    avg_area = mean(computed_area_km2, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+p <- ggplot(
+  mm_summary,
+  aes(
+    x = total_area,
+    y = avg_area,
+    size = n_barangays,
+    text = paste0(
+      "City: ", City, "<br>",
+      "No. of Barangays: ", n_barangays, "<br>",
+      "Total Area: ", round(total_area, 2), " km²<br>",
+      "Average Barangay Area: ", round(avg_area, 2), " km²"
+    )
+  )
+) +
+  geom_point(alpha = 0.7, color = "steelblue") +   
+  scale_size_continuous(range = c(5, 20)) +
+  labs(
+    title = "City Comparison: Area Metrics",
+    x = "Total Area (km²)",
+    y = "Average Barangay Area (km²)"
+  ) +
+  theme_minimal()
+
+ggplotly(p, tooltip = "text") %>%
+  style(showlegend = FALSE)   # remove legend
+```
+
+We get a few observations from the resulting plot:
+
+1.  Quezon City is the largest city with more than 160 square kilometers, while Pateros is the smallest with only 1.62.
+2.  The average barangay size ranges from 0.05 square kilometers (City of Manila) to 4.37 square kilometers. (Muntinlupa)
+3.  For a large number (11 of the 17) cities, there appears to be a direct relationship between the city's size and the average size of its barangays. Most of these cities have 18-33 barangays with the exception of one, Pateros, with only 10, which appears as the bubble in the bottom left corner. This is quite expected for a given number, or a narrow range in the number, of barangays
+4.  The cities with a very high number of barangays do not follow this trend and are below the trendline. With the exception of Quezon City, they have the lowest average size of barangays.
+5.  On the other hand, two cities with a low number of barangays, Muntinlupa (9) and Parañaque (16), have the highest average barangay size.
+
+## Question 1.1: Which cities have the highest number of cafes?
+
+To answer this question, we need to count the number of cafes that exist in a given city or barangay. While we already have tags in the dataset for the city, and barangay, we can still do this using number of geometric functions in the sf package, of which we will be using one.
+
+The code block below uses `st_contains()` to return the points or rows in `mm_cafe_sf` that fall within each barangay in `mm_sf`. The lengths function is then used to count the number of rows returned for each barangay and then it is passed as a new column in the datarame copy of `mm_sf`. We have added a check at the end, using `sum()`, to add up the resulting counts as a means to double check.
+
+```{r}
+mm_sf_eda <- mm_sf
+
+mm_sf_eda$num_cafes <- lengths(st_contains(mm_sf, mm_cafe_sf)) 
+
+mm_sf_eda <- mm_sf_eda %>%
+  relocate(num_cafes, .before = geometry)
+
+sum(mm_sf_eda$num_cafes)
+
+
+```
+
+The resulting counts add up to 11,599 instead of the total 11,812 we have in the dataframe for the cafes. This is because some of the cafes in the database are not actually in Metro Manila, but lie near the border of the region.
+
+```{r}
+unique(mm_cafe_sf$City)
+```
+
+Cities like Cainta and Bacoor are actually in other regions, so this will explaing the discrepancy that we are seeing.
+
+We now have an sf dataframe with the barangays and their number of cafes, which will directly be useful for the next question. However, if we want to answer questions on the city first, we need to summarize this information into cities.
+
+```{r}
+mm_sf_eda_city <- mm_sf_eda %>%
+  group_by(City, CityCode) %>%
+  summarise(
+    computed_area_km2 = sum(computed_area_km2, na.rm = TRUE),
+    num_cafes = sum(num_cafes, na.rm = TRUE),
+    .groups = "drop",
+    do_union = TRUE
+  )
+```
+
+The code block above creates a new sf dataframe that summarizes `mm_sf_eda` by city. It takes the total area and number of cafes using `sum()`, while it performs a spatial union of the barangays through the `do_union = TRUE` argument.
+
+Using the new dataframe, we can show a a bar chart using the ggplot package.
+
+```{r}
+mm_sf_eda_city %>%
+  ggplot(aes(x = num_cafes, y = reorder(City, num_cafes))) +
+  geom_col(fill = "steelblue") +
+  geom_text(aes(label = num_cafes), 
+            hjust = -0.2, 
+            size = 3.5) +
+  labs(
+    title = "Number of Cafes per City in Metro Manila",
+    x = NULL,
+    y = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 14, face = "bold")
+  ) +
+  coord_cartesian(clip = "off") +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.15)))
+```
+
+The chart shows that Quezon City has the highest number of cafes at close to 2900, followed by the City of Manila at around 1500. There also appears to be a cluster of cities with cafes numbering between 763 and 884.
+
+Since we are working with geographic data, we can also visualize it using maps. Where we have the data (number of cafes) assigned to specific areas, a filled map or a choropleth map usually makes sense.
+
+The code block below used the tmap package to generate a filled map where the fill (via `tm_fill()`) corresponds to the number of cafes in a city. By default, the range of values for `num_cafes` are split into 6 classes of equal lengths.
+
+```{r}
+tm_shape(mm_sf_eda_city) +
+  tm_fill("num_cafes", title = "Number of Cafes") +
+  tm_borders() +
+  tm_text("City", size = 0.45) +
+  tm_layout(main.title = "Number of Cafes Per City in Metro Manila",
+            main.title.position = "center",
+            main.title.size = 1.2,
+            legend.outside = TRUE)
+```
+
+The resulting chart looks good, but we can make a few more changes to make it a bit better. First, a large number of city names are overlapping. Making the font smaller will solve it, but make them unreadable. What we can do is to just shorten the names. For Metro Manila, with the exception of QC (Quezon City), all the cities are recognizable even without "City or "City of", so we can simply drop those words, and create a new name column as in the following code block.
+
+```{r}
+mm_sf_eda_city <- mm_sf_eda_city %>%
+  mutate(
+    City_Short = case_when(
+      City == "Quezon City" ~ "QC",
+      str_detect(City, "City of") ~ str_trim(str_remove(City, "City of")),
+      str_detect(City, "City") ~ str_trim(str_remove(City, "City")),
+      TRUE ~ City
+    )
+  ) %>%
+  relocate(City_Short, .before = geometry)
+```
+
+We now have a new column. We can now generate an improved map with the following enhancements:
+
+1.  Use `City_Short` instead of `City` for labeling of the city names using the `tm_text()` function
+2.  Change the division of classes for the number of cafes from equal intervals to jenks which finds natural breakpoints or groups in the data. This is done using the `style` argument in `tm_fill()`.
+3.  Change the color palette to one which is easier to differentiate between classes. This is done using the `palette` argument in `tm_fill()`.
+4.  Added a histogram for the distribution of cities across the classes and labeled the histogram. This is done using the `legend.hist` and `legend.hist.title` arguments in `tm_fill()`.
+
+```{r}
+tm_shape(mm_sf_eda_city) +
+  tm_fill("num_cafes",
+          title = "Number of Cafes",
+          palette = "Pastel1",
+          style = "jenks",
+          legend.hist = TRUE,
+          legend.hist.title = "Distribution of Cities",
+          legend.is.portrait = TRUE) +
+  tm_borders() +
+  tm_text("City_Short", size = 0.5) +
+  tm_layout(main.title = "Number of Cafes Per City in Metro Manila",
+            main.title.position = "center",
+            main.title.size = 1.2,
+            legend.outside = TRUE)
+```
+
+This improved map still shows QC and Manila as ones with the highest number of cafes, but we see that they are neighboring, and especially for QC, are among the largest cities in the region. We also see that there are 5 cities in the 572-884 cafes range which are forming a belt across the region. It is also clear that the cities in the lowest class (63-171 cafes) are the smallest cities in Metro Manila.
+
+## Question 1.2: Which barangays have the highest number of cafes?
+
+We can use the same approach as the previous question to answer this one. The only problem is that we have 1712 barangays, so displaying all of them at once in a single chart or table will make the visual unreadable. What we can do is to focus on top N barangays and/or focus on specific cities.
+
+First, we can show the top 20 barangays in a similar bar chart that we did for cities. The code block below does this and we use the bar colors to indicate in which city a barangay falls under.
+
+```{r}
+mm_sf_eda %>%
+  arrange(desc(num_cafes)) %>%
+  slice_head(n = 20) %>%
+  ggplot(aes(
+    x = num_cafes,
+    y = reorder(Barangay, num_cafes),
+    fill = City
+  )) +
+  geom_col() +
+  geom_text(
+    aes(label = num_cafes),
+    hjust = -0.2,
+    size = 3.5
+  ) +
+  labs(
+    title = "Number of Cafes per Barangay (Top 20) in Metro Manila",
+    x = NULL,
+    y = NULL,
+    fill = "City"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold")
+  ) +
+  coord_cartesian(clip = "off") +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.15)))
+```
+
+The top 20 barangays come from 9 different cities. The top 1 barangay (Post Proper Northside) comes from Makati, but no other barangay from the city made the list.
+
+We can plot these 20 barangays in a single map by using these as a layer when defining a tmap visualization. The code block below uses three layers:
+
+1.  Bottom layer = using `mm_sf_eda_city` we show city boundaries filled with a generic grey to act as a basemap for the barangays to be show on
+2.  Middle layer = using `mm_sf_eda`, we first get the top 20 barangays and then show these barangays filled as polygons, similar as the map we generated for the cities
+3.  Top layer = again, using `mm_sf_eda_city` we add labels for the city names to help the viewer identify where the barangays are. Adding the labels on the bottom layer will not work since they would have been covered by the middle layer.
+
+```{r}
+mm_sf_eda_top20 <- mm_sf_eda %>%
+  arrange(desc(num_cafes)) %>%
+  slice_head(n = 20)
+
+tm_shape(mm_sf_eda_city) +
+  tm_fill(col = "grey") +
+  tm_borders() +
+tm_shape(mm_sf_eda_top20) +
+  tm_fill("num_cafes",
+          title = "Number of Cafes",
+          palette = "Pastel1") +
+  tm_borders() +
+  tm_layout(main.title = "Top 20 Barangays with Most Cafes in Metro Manila",
+            main.title.position = "center",
+            main.title.size = 1,
+            legend.outside = TRUE) +
+tm_shape(mm_sf_eda_city) +
+  tm_text("City_Short", size = 0.5)
+
+  
+```
+
+The resulting map gives the same information as the bar chart with added insights on the location and relative size of the barangays. For example, The barangays with the most cafes in QC, with the exception of one, are adjacent to each other.
+
+## Question 2.1: Which cities have the highest density of cafes?
+
+The number of cafes is not a good, or even fair, way to compare cities and barangays especially when there are differences in their land area. Everything else equal, smaller cities are expected to have less cafes (or any other establishment) than larger cities. In order to take out the effect of area, we can look at the density instead.
+
+We can add a column for the cafe density (`cafe_density`) into the dataframes for barangays and cities, and this will allow us to perform all the same analysis we did using the number of cafes.
+
+```{r}
+mm_sf_eda_city <- mm_sf_eda_city %>%
+  mutate(
+    cafe_density = num_cafes / computed_area_km2
+    ) %>%
+  relocate(cafe_density, .before = geometry)
+
+mm_sf_eda <- mm_sf_eda %>%
+  mutate(
+    cafe_density = num_cafes / computed_area_km2
+    ) %>%
+  relocate(cafe_density, .before = geometry)
+```
+
+With the data set up, we can recreate the bar chart using densities instead of the absolute numbers.
+
+```{r}
+mm_sf_eda_city %>%
+  ggplot(aes(x = cafe_density, y = reorder(City, cafe_density))) +
+  geom_col(fill = "steelblue") +
+  geom_text(aes(label = round(cafe_density)), 
+            hjust = -0.2, 
+            size = 3.5) +
+  labs(
+    title = "Number of Cafes per Sq Km per City in MM",
+    x = NULL,
+    y = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 14, face = "bold")
+  ) +
+  coord_cartesian(clip = "off") +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.15)))
+```
+
+The chart above shows a very different city ranking compared to the one we had using the number of cafes. Quezon City was at the top of the list before, but now it is on the bottom half when we look at densities. We can combine both the measures (number and density) in one chart, and even throw in the size of the city, in order to look at those variables at the same time. The code block below creates a bubble scatterplot to show three variables at the same time.
+
+```{r}
+ggplot(mm_sf_eda_city,
+       aes(x = num_cafes,
+           y = cafe_density,
+           size = computed_area_km2,
+           label = City_Short)) +
+  geom_point(alpha = 0.7, color = "steelblue") +
+  geom_text(vjust = -0.8, size = 3) +
+  scale_size_continuous(range = c(4, 14)) +
+  labs(
+    title = "Cafes per City: Scale vs Density",
+    x = "Number of Cafes",
+    y = "Cafe Density (per sq km)",
+    size = "Area in Square km"
+  ) +
+  theme_minimal()
+
+```
+
+Aside from seeing that Quezon City and Pateros are on very different parts of the two lists, we also see that:
+
+1.  Manila, Makati and Pasig both have high numbers of cafes, and high densities.
+2.   Navotas, Muntinlupa and Caloocan, have low values on both of the variables.
+
+Lastly, we can show the variables on a map. The tmap package can show multiple maps in multiple ways, one of which is by passing a list for some of the arguments. In the code block below, we use a list where in multiple parameters to indicate that the first map will display the information on the number of cafes, while the second one will be on the density of cafes.
+
+```{r}
+tm_shape(mm_sf_eda_city) +
+  tm_fill(
+    c("num_cafes", "cafe_density"),
+    title = c("Number of Cafes", "Cafes per km2"),
+    palette = "Pastel1",
+    style = "jenks"
+  ) +
+  tm_borders() +
+  tm_text("City_Short", size = 0.5) +
+  tm_layout(
+    main.title = "Number and Density of Cafes Per City in MM",
+    main.title.position = "center",
+    main.title.size = 1,
+    legend.position = c("right", "bottom"),
+    asp = 0.9
+  )
+```
+
+The resulting map reveals some additional insights:
+
+1.  The highest density cities are Pateros, Makati, Mandaluyong and Manila, which are adjacent to each other.
+2.  The cities in second highest density class are adjacent to the first class cities as well.
+3.  The lowest density cities appear to be the onesat the edge of the region or farthest from the center.
+
+## Question 2.2: Which barangays have the highest density of cafes?
+
+A similar approach can be done for barangays. We run the same charts we created for the number of cafes, to visualize the density of cafes. The next code block does this for the bar chart. I have added a second data label for the area of each barangay since it will help explain what comes next.
+
+```{r}
+mm_sf_eda %>%
+  arrange(desc(cafe_density)) %>%
+  slice_head(n = 20) %>%
+  ggplot(aes(
+    x = cafe_density,
+    y = reorder(Barangay, cafe_density),
+    fill = City
+  )) +
+  geom_col() +
+  geom_text(
+    aes(label = round(cafe_density)),
+    hjust = -0.2,
+    size = 3.5
+  ) +
+  geom_text(
+    aes(label = paste0(round(computed_area_km2, 2), " km²")),
+    hjust = 1.1,          # pushes text slightly left of the bar start
+    color = "black",
+    size = 3.2
+  ) +
+  labs(
+    title = "Cafes/km² per Barangay (Top 20) in Metro Manila",
+    x = NULL,
+    y = NULL,
+    fill = "City"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold")
+  ) +
+  coord_cartesian(clip = "off") +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.15)))
+```
+
+The resulting chart shows that 18 of the top 20 barangays come from Manila, and two of them come from Pasay. We also see some alarming numbers. All of the barangays in the list apparently have more than 200 cafes per square kilometer! Without any other info, this might make us believe that those barangays have booming cafe scenes. This is not the case though. If we turn out attention to the barangays' land area, we see that each of them is less than a tenth of a square kilometer. The high densities of barangays are driven by their small areas.
+
+We can check the range of values for the area of each barangay by looking at the quantiles. Instead of just looking at quartiles, we can check ten ranges or the deciles, using the code block below.
+
+```{r}
+# Compute decile breakpoints
+deciles <- quantile(
+  mm_sf_eda$computed_area_km2,
+  probs = seq(0, 1, 0.1),
+  na.rm = TRUE
+)
+
+# Build a table of decile ranges
+decile_table <- tibble(
+  Decile = paste0("D", 1:10),
+  Range = paste0(
+    round(deciles[1:10], 3),
+    "  to  ",
+    round(deciles[2:11], 3)
+  )
+)
+
+decile_table
+```
+
+It looks like at least 70% of barangays have an area of less than 0.1 square kilometers while less than 10% have an area of more than 1. There is also a large difference between the bottom value of each decile, so even adjacent danges are quite different from each other. The large swing in areas will make it hard to interpret any findings we get in looking at individual barangay densities.
+
+## Question 2.3: Which areas (in city or barangay X) have high or low densities of cafes?
+
+While we saw that looking at barangay-level densities might be challenging, we have another option when looking at density. This is through the use of kernel density estimation or KDE. Through KDE, we transform discrete points (the cafes) into a continuous density surface that can help us identify clusters or interesting variations in the location or occurrence of events.
+
+For the sake of this post, we will focus on a single city, say Taguig, for the KDE analysis. This is so that we can focus on a smaller area when analyzing.
+
+```{r}
+# Filter dataframes to only Taguig 
+mm_sf_eda_city_taguig <- mm_sf_eda_city[mm_sf_eda_city$City == "Taguig City", ]
+mm_sf_eda_taguig <- mm_sf_eda[mm_sf_eda$City == "Taguig City", ]
+mm_cafe_sf_taguig <- mm_cafe_sf[mm_cafe_sf$City == "Taguig City", ]
+
+# Convert into a meter based system
+mm_cafe_sf_taguig <- st_transform(mm_cafe_sf_taguig, 32651)
+mm_sf_eda_taguig <- st_transform(mm_sf_eda_taguig, 32651)
+mm_sf_eda_city_taguig <- st_transform(mm_sf_eda_city_taguig, 32651)
+```
+
+The spatstat package is what we will be using in this post to perform KDE for the cafes in Taguig. This requires some transformation as the functions do not work directly on sf objects. There are other packages that can be used, and might not need transformation, but we will just focus on spatstat for now.
+
+The first step we need to perform is transforming the boundary map of Taguig into an owin (observation window) object using `as.owin()`.
+
+```{r}
+taguig_win <- as.owin(mm_sf_eda_city_taguig)
+
+class(taguig_win)
+
+```
+
+```{r}
+plot(taguig_win)
+```
+
+Next, we need to convert the location of the points into a ppp object (planar point pattern) using the `as.ppp()` function.
+
+```{r}
+mm_cafe_sf_taguig <- mm_cafe_sf_taguig %>%
+  dplyr::filter(st_geometry_type(.) == "POINT") %>%
+  dplyr::filter(!st_is_empty(.))
+
+mm_cafe_taguig_ppp <- as.ppp(mm_cafe_sf_taguig)
+
+class(mm_cafe_taguig_ppp)
+summary(mm_cafe_taguig_ppp)
+```
+
+We then need to assign the window to this new object:
+
+```{r}
+mm_cafe_taguig_ppp$window <- taguig_win
+```
+
+KDE is done using the `density()` function of spatstat. The function takes in an objject of the class ppp, and has a number of possible parameters, of which the following are used in the following code block:
+
+-    sigma - standard deviation for the smoothing kernel. This is also known as the bandwidth of the function. The input to the parameter can be a numerical value or a function that returns the value or the bandwidth. We use one of the automatic bandwidth calculation functions `bw.diggle()`
+
+-   edge - indicates if edge correction will be done
+
+-   kernel - the smoothing kernel or function to be used. A gaussian input means that a bell shaped curve is modeled around each point or kernel.
+
+```{r}
+kde_taguig_diggle <- density(
+  mm_cafe_taguig_ppp,
+  sigma=bw.diggle,
+  edge=TRUE,
+  kernel="gaussian") 
+
+plot(kde_taguig_diggle)
+```
+
+Note that the input was in meters so the resulting chart is displaying the density or number of cafes per square meter. This is why the scale appears to be very small. We can adjust the scale by converting the input to kilometers using `rescale.ppp()`
+
+```{r}
+mm_cafe_taguig_ppp_km <- rescale.ppp(
+  mm_cafe_taguig_ppp, 1000, "km")
+```
+
+We can then rerun the code to regenerate the kde and the plot:
+
+```{r}
+kde_taguig_diggle <- density(
+  mm_cafe_taguig_ppp_km,
+  sigma=bw.diggle,
+  edge=TRUE,
+  kernel="gaussian") 
+
+plot(kde_taguig_diggle)
+```
+
+For this post, we will not be looking at the differences between the choice of bandwidth and the type of function, but I welcome the reader to research separately on KDE or on the documentation for the functions like [density.ppp()](https://www.rdocumentation.org/packages/spatstat/versions/1.64-1/topics/density.ppp).
+
+So far, all the plots we have for the KDE are "simple" maps generated through the plot function. Since the output was not of the type sf, we are not able to use the richness of the tmap function to render better maps and layouts.
+
+A solution to this is to convert the output into a raster that is in the sf format. We can do this using the `st_as_stars()` function of the stars package.
+
+```{r}
+taguig_kde_raster <- st_as_stars(kde_taguig_diggle)
+st_crs(taguig_kde_raster) <- st_crs(mm_sf_eda_city_taguig)
+class(taguig_kde_raster)
+```
+
+Note that we had used the unscaled kde values, so we need to multiply all values with 1000000 to make them appear as points or cafes per square kilometer again.
+
+```{r}
+taguig_kde_raster <- taguig_kde_raster * 1e6
+```
+
+We can now use the raster as a layer in tmap. The code block below uses three layers, with the kde raster layer as the middle layer. An alpha value (transparency) is included for that layer so the bottom layer is still visible.
+
+```{r}
+tm_shape(mm_sf_eda_taguig) +
+  tm_borders() +
+tm_shape(taguig_kde_raster) +
+  tm_raster(title = "Cafes per sq km",
+            palette = "viridis",
+            alpha = 0.8) +
+tm_shape(mm_sf_eda_taguig) +
+  tm_text("Barangay",
+          size = 0.4,
+          col = "white") +
+tm_layout(
+  bg.color = "grey",
+  main.title = "Cafe Density in Taguig"
+
+  
+)
+```
+
+The resulting map shows the raster of the KDE overlaid on top of the boundaries of barangays in Taguig. There are some areas where there is a high density of cafes, but most of the map is showing a low density of 50 cafes or less per square kilometer.
+
+# End Notes
+
+We have looked at a number of different ways to visualize the point data of the cafes in Metro Manila. The intention of the post is to just preview some of the available techniques and get some initial sense of the data. There is still some work needed in cleaning and enriching the data, including other layers other than the location of cafes. Once I get some progress there, I will go back to exploring the data and share some of the methods and the outputs in a future post.
