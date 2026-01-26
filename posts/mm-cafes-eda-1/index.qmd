@@ -12,7 +12,7 @@ execute:
   freeze: true
 ---
 
-This is a continuation to [my previous post on the topic](https://datawithderek.netlify.app/posts/mm-cafes-creating-gmaps-db/). Since we have a good amount of data in our hands, I wanted to run some initial exploratory analysis using a combination of non-spatial and spatial techniques. This post will use relatively basic technique and will only be looking at one layer of spatial data– the cafes in Metro Manila and their locations.
+This is a continuation to [my previous post on the topic](https://datawithderek.netlify.app/posts/mm-cafes-creating-gmaps-db/). Since we have a good amount of data on our hands, I wanted to run some initial exploratory analysis using a combination of non-spatial and spatial techniques. This post will use relatively basic techniques and will only be looking at one layer of spatial data– the cafes in Metro Manila and their locations.
 
 # Objectives
 
@@ -597,7 +597,7 @@ ggplot(mm_sf_eda_city,
 Aside from seeing that Quezon City and Pateros are on very different parts of the two lists, we also see that:
 
 1.  Manila, Makati and Pasig both have high numbers of cafes, and high densities.
-2.   Navotas, Muntinlupa and Caloocan, have low values on both of the variables.
+2.  Navotas, Muntinlupa and Caloocan, have low values on both of the variables.
 
 Lastly, we can show the variables on a map. The tmap package can show multiple maps in multiple ways, one of which is by passing a list for some of the arguments. In the code block below, we use a list where in multiple parameters to indicate that the first map will display the information on the number of cafes, while the second one will be on the density of cafes.
 
@@ -746,7 +746,7 @@ mm_cafe_taguig_ppp$window <- taguig_win
 
 KDE is done using the `density()` function of spatstat. The function takes in an objject of the class ppp, and has a number of possible parameters, of which the following are used in the following code block:
 
--    sigma - standard deviation for the smoothing kernel. This is also known as the bandwidth of the function. The input to the parameter can be a numerical value or a function that returns the value or the bandwidth. We use one of the automatic bandwidth calculation functions `bw.diggle()`
+-   sigma - standard deviation for the smoothing kernel. This is also known as the bandwidth of the function. The input to the parameter can be a numerical value or a function that returns the value or the bandwidth. We use one of the automatic bandwidth calculation functions `bw.diggle()`
 
 -   edge - indicates if edge correction will be done
 
@@ -819,6 +819,10 @@ tm_layout(
   
 )
 ```
+
+The code output is not rendering properly on the website, so including an image here until the rendering gets fixed:
+
+![](images/clipboard-4278446620.png)
 
 The resulting map shows the raster of the KDE overlaid on top of the boundaries of barangays in Taguig. There are some areas where there is a high density of cafes, but most of the map is showing a low density of 50 cafes or less per square kilometer.
 
