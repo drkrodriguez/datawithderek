@@ -1,0 +1,398 @@
+---
+title: "Forecasting with Prophet in R - Part I"
+author: "Derek Rodriguez"
+date: "2026-02-27"
+date-modified: "last-modified"
+categories: [R, Learn With Me, Forecasting]
+image: "https://facebook.github.io/prophet/static/wordmark.svg"
+execute: 
+  eval: true
+  echo: true
+  message: false
+  freeze: true
+---
+
+In this post, we learn how to forecast using [Prophet](http://facebook.github.io/prophet/) by following the code in the documentation. Prophet is a procedure implemented in R or Python for forecasting time series data.
+
+I first heard about Prophet in the modules to review for Meta's Marketing Science Professional– specifically in the chapters covering Marketing Mix Modeling or MMM. Meta had developed and released an open-sourced package for MMM in R called [Robyn](https://facebookexperimental.github.io/Robyn/). This package uses Prophet to decompose the time series data into its different components like the trend, seasonality and holiday patterns.
+
+We will cover implementation in R in this post, but the documentation in the website also [gives the same in Python](https://facebook.github.io/prophet/docs/installation.html#python). This post covers up to the section **Seasonality, Holiday Effects, And Regressors** in the documentation. The rest of the documentation will be covered in a separate post.
+
+# Loading R Packages
+
+We load the following packages into our environment using `p_load()` of the [**pacman**](https://cran.r-project.org/web/packages/pacman/index.html) package. We use pacman so that any packages that are not installed will be automatically installed. If all packages are already installed, then the code block is equivalent to a call of `library()` to load the packages.
+
+::: panel-tabset
+#### Package Descriptions
+
+The loaded packages include:
+
+-   **prophet -** package for importing, managing and processing vector-based geospatial data
+
+-   **tidyverse -** collection of packages for performing data importation, wrangling and visualization
+
+-   **plotly** - package for the creation of interactive data visualizations
+
+#### Package Installation and Loading
+
+```{r}
+pacman::p_load(prophet, tidyverse, plotly)
+```
+:::
+
+# Quick Start
+
+This section covers the procedures and code from the [same section](https://facebook.github.io/prophet/docs/quick_start.html#r-api) in the Prophet documentation.
+
+## Loading the data
+
+For this section, we will be using the log of the daily page views for the Wikipedia page of [Peyton Manning](https://en.wikipedia.org/wiki/Peyton_Manning). This was scraped by the team using the [Wikipediatrend](https://cran.r-project.org/package=wikipediatrend) package in R.
+
+```{r}
+df <- read.csv('https://raw.githubusercontent.com/facebook/prophet/main/examples/example_wp_log_peyton_manning.csv')
+```
+
+```{r}
+head(df)
+```
+
+`df` is already in standard input for Prophet as it contains two columns: `ds` and `y`. `ds` corresponds to the datestamp. It should be comprised of strings in the format YYYY-MM-DD for dates, or YYYY-MM-DD HH:MM:SS for times. `y` contains the numeric value that we want to predict or analyze.
+
+## Fitting the Model
+
+The function `prophet()` is used to fit the model. The only required parameter is the historical data `df`, but other parameters are available to control how the package fits the data.
+
+```{r}
+m <- prophet(df)
+```
+
+## Making Predictions
+
+Making predictions requires a dataframe that contains a column `ds` with the dates that we want to make predictions on. The make_future_dataframe() function can generate such a dataframe, by taking in the model object and the number of periods in the future that we want to make predictions on. Note that the resulting object, by default, will include all values of `ds` from the model object.
+
+```{r}
+future <- make_future_dataframe(m, periods = 365)
+tail(future)
+```
+
+We then use the `predict()` function to produce the forecast. The result will be an object with multiple columns where the forecast is given by:
+
+-   `yhat` - the central forecast
+
+-   `yhat_lower` - lower bound of the forecast
+
+-   `yhat_upper` - the upper bound of the forecast
+
+```{r}
+forecast <- predict(m, future)
+tail(forecast)
+```
+
+## Visualizing the Forecast
+
+We can call the standard `plot()` function to plot the actual y values and the yhat values by passing the model and the forecast objects.
+
+```{r}
+plot(m, forecast)
+```
+
+The function `prophet_plot_components()` visualizes a breakdown of the trends and the different seasonality components.
+
+```{r}
+prophet_plot_components(m, forecast)
+```
+
+An interactive version of the plot can be produced using [Dygraphs](https://rstudio.github.io/dygraphs/index.html) using `dyplot.prophet()`.
+
+```{r}
+dyplot.prophet(m, forecast)
+```
+
+# Saturating Forecasts
+
+When forecasting, there is usually a maximum value (e.g., demand, sales) that can be achieved. This point is called the carrying capacity and may be dictated by factors like market size or population. Prophet allows us to make forecasts using a logistics growth trend (vs the default a linear trend) with a specified carrying capacity.
+
+## Specifying the Carrying Capacity or Maximum Limit
+
+The carrying capacity is specified by including a column `cap` in the input dataframe. In the following, we set it to 8.5. (i.e., the maximum log number of views)
+
+```{r}
+df$cap <- 8.5
+```
+
+Note that this means that there is a `cap` defined for every row in the dataframe. The value also does not need to be constant, so it can be an increasing or decreasing sequence depending on the case.
+
+## Fitting the Model
+
+We can still use the function `prophet()` to fit the model, but we specify the use of a logistic growth model using the `growth` argument.
+
+```{r}
+m <- prophet(df, growth = 'logistic')
+```
+
+## Making Predictions
+
+We again create the dataframe for the predictions using `make_future_dataframes()`, but we now also need to add an additional column `cap` to specify the carrying capacity for all periods.
+
+```{r}
+future <- make_future_dataframe(m, periods = 1826)
+future$cap <- 8.5
+```
+
+We again pass the model object and the future periods dataframe as inputs to `predict()` to generate the predictions.
+
+```{r}
+fcst <- predict(m, future)
+plot(m, fcst)
+```
+
+## Specifying a Minimum Value
+
+While we have set a maximum value using `cap`, the logistic function also observes an implicit minimum of zero, but it is possible to set a different minimum value for the forecast by specifying a `floor`.
+
+```{r}
+df$floor <- 5.0
+m <- prophet(df, growth = 'logistic')
+```
+
+```{r}
+future$cap <- 8.5
+future$floor <- 5.0
+fcst <- predict(m, future)
+plot(m, fcst)
+```
+
+# Trend Changepoints
+
+By default, Prophet will automatically detect trend changepoints and will allow the trend to adapt as needed. If we wish to have finer control over this, then there are a number of arguments we can use.
+
+## Automatic Changepoint Detection
+
+Prophet detects changepoints by first specifying a large number of points where trend can change, but will use a few of them as possible in the fitted model. By default, there will be 25 potential points placed uniformly placed in the first 80% of the time series, but there are some arguments that can be used to modify this behavior.
+
+We can visualize the changepoints used by Prophet in the fitted model by using `add_changes_to_plot()` with the `plot()` function.
+
+```{r}
+plot(m, forecast) + add_changepoints_to_plot(m)
+```
+
+## Adjusting Trend Flexibility
+
+Prophet uses sparse priors on the magnitude of the possible trend changepoints, and its magnitude can be controlled by the parameter `changepoint_prior_scale`. The default value is 0.05. Increasing the value of this parameter makes it more flexible– which means more of the potential trend changepoints may be used, and there is a higher risk of overfitting. A lower value of the parameter will result to the inverse, i.e., less points used and there is a higher risk of underfitting.
+
+The code below shows the impact of increasing the parameter value from the default 0.05 to 0.5.
+
+```{r}
+m <- prophet(df, changepoint.prior.scale = 0.5)
+forecast <- predict(m, future)
+plot(m, forecast) + add_changepoints_to_plot(m)
+```
+
+The number of changepoints used has increased significantly from 8 to more than 20.
+
+## Specifying the Location of Changepoints
+
+If we wish to override the automatic changepoint detection used by Prophet, we can manually specify the location of potential changepoints using the `changepoints` argument.
+
+The following code just specifies a single location for the potential changepoint, which is then reflected as the single inflection point in the resulting plot.
+
+```{r}
+m <- prophet(df, changepoints = c('2014-01-01'))
+forecast <- predict(m, future)
+plot(m, forecast) + add_changepoints_to_plot(m)
+```
+
+# Seasonality, Holiday Effects, And Regressors
+
+## Modeling Holidays and Special Events
+
+Holidays and other recurring events can be added to the model by creating a dataframe for them. It requires two columns: `holiday` for the name or tag of the holiday, and `ds` for the datestamp. A set of optional columns are `lower_window` and `upper_window`, which dictate how many days before and after the holiday should be considered. For example, without considering Christmas Eve separately, a `lower_window` value of -1 can be set for Christmas. (and 0 for `upper_window`)
+
+The following code creates a dataframe for the dates of Peyton Manning's playoff appearances. Note that there are two types of holidays defined: playoff and superbowl. Superbowls are a subset of playoffs so we can consider that there is an increased holiday effect on the same dates.
+
+```{r}
+playoffs <- tibble(
+  holiday = 'playoff',
+  ds = as.Date(c('2008-01-13', '2009-01-03', '2010-01-16',
+                 '2010-01-24', '2010-02-07', '2011-01-08',
+                 '2013-01-12', '2014-01-12', '2014-01-19',
+                 '2014-02-02', '2015-01-11', '2016-01-17',
+                 '2016-01-24', '2016-02-07')),
+  lower_window = 0,
+  upper_window = 1
+)
+superbowls <- tibble(
+  holiday = 'superbowl',
+  ds = as.Date(c('2010-02-07', '2014-02-02', '2016-02-07')),
+  lower_window = 0,
+  upper_window = 1
+)
+holidays <- bind_rows(playoffs, superbowls)
+```
+
+We then rerun the model and pass this dataframe into the `holidays` parameter.
+
+```{r}
+m <- prophet(df, holidays = holidays)
+forecast <- predict(m, future)
+```
+
+The holiday components now show up in columns of the forecast object.
+
+```{r}
+forecast %>% 
+  select(ds, playoff, superbowl) %>% 
+  filter(abs(playoff + superbowl) > 0) %>%
+  tail(10)
+```
+
+The total holiday effect also shows up in the component plot.
+
+```{r}
+prophet_plot_components(m, forecast)
+```
+
+## Built-in Country Holidays
+
+Prophet can also use a built-in collection of holidays using the `add_country_holidays()` method. The following code adds the built-in US holidays in addition to the ones we defined earlier:
+
+```{r}
+m <- prophet(holidays = holidays)
+m <- add_country_holidays(m, country_name = 'US')
+m <- fit.prophet(m, df)
+```
+
+As of writing, holiday dates are computed in R for 1995 through 2044.
+
+We can check which holidays were included by checking the `train.holiday.names` attribute of the model:
+
+```{r}
+m$train.holiday.names
+```
+
+The holiday effects will be reflected in the forecast object and the components plot.
+
+```{r}
+forecast <- predict(m, future)
+prophet_plot_components(m, forecast)
+```
+
+## Fourier Order for Seasonalities
+
+Seasonality is [estimated using a partial Fourier sum](https://peerj.com/preprints/3190/). The number of terms in the partial sum, or the Fourier order, determines how quickly seasonality can change; for Prophet the default is 10. The following code plots the yearly seasonality using the default parameters.
+
+```{r}
+m <- prophet(df)
+prophet:::plot_yearly(m)
+```
+
+The order can be adjusted using the parameter `yearly.seasonality`. A higher value increases the frequency of changes and will generally result to a less smooth plot. The code below adjusts the order to 20:
+
+```{r}
+m <- prophet(df, yearly.seasonality = 20)
+prophet:::plot_yearly(m)
+```
+
+## Specifying Custom Seasonalities
+
+By default, Prophet will fit weekly and yearly seasonalities. Other seasonalities can be added by using `add_seasonality()`. The inputs to this function is the `name` of the seasonality, the `period` in days, and the `fourier.order` to use. Note that the yearly and weekly seasonality use a default value of 10 and 3 for the Fourier order, respectively.
+
+The code below replaces the weekly seasonality (by toggling `weekly.seasonality`) with a monthly seasonality:
+
+```{r}
+m <- prophet(weekly.seasonality=FALSE)
+m <- add_seasonality(m, name='monthly', period=30.5, fourier.order=5)
+m <- fit.prophet(m, df)
+forecast <- predict(m, future)
+prophet_plot_components(m, forecast)
+```
+
+## Seasonalities that Depend on Other Factors
+
+In certain cases, the seasonality might differ at different times: e.g., during summer months vs the rest of the year, during weekends vs weekdays. These can be modeled in Prophet using conditional seasonalities.
+
+In our current dataset, the default seasonality assumes that the pattern is the same throughout the year. If we want to differentiate the seasonality on-season and off-season, we can use conditional seasonalities.
+
+The first step is to include boolean columns in `df` to indicate whether the record is on-season or off-season:
+
+```{r}
+is_nfl_season <- function(ds) {
+  dates <- as.Date(ds)
+  month <- as.numeric(format(dates, '%m'))
+  return(month > 8 | month < 2)
+}
+df$on_season <- is_nfl_season(df$ds)
+df$off_season <- !is_nfl_season(df$ds)
+```
+
+To override the default seasonality, we again disable the default weekly seasonality.
+
+```{r}
+m <- prophet(weekly.seasonality=FALSE)
+```
+
+We then replace it by adding the two custom seasonalities. These are made conditional through the use of the `condition.name` parameter.
+
+```{r}
+m <- add_seasonality(m, name='weekly_on_season', period=7, fourier.order=3, condition.name='on_season')
+m <- add_seasonality(m, name='weekly_off_season', period=7, fourier.order=3, condition.name='off_season')
+m <- fit.prophet(m, df)
+```
+
+The future dates should also include the same boolean columns before generating the predictions:
+
+```{r}
+future$on_season <- is_nfl_season(future$ds)
+future$off_season <- !is_nfl_season(future$ds)
+forecast <- predict(m, future)
+prophet_plot_components(m, forecast)
+```
+
+## Prior Scale for Holidays and Seasonality
+
+If holidays or seasonality appear to be overfitting, then they can be adjusted using the `holiday.prior.scale`, `seasonality.prior.scale`, or the `prior.scale` parameter.
+
+The code below reduces the holiday prior scale from the default 10 to 0.5. A lower value dampens the effect of holidays.
+
+```{r}
+m <- prophet(df, holidays = holidays, holidays.prior.scale = 0.05)
+forecast <- predict(m, future)
+forecast %>% 
+  select(ds, playoff, superbowl) %>% 
+  filter(abs(playoff + superbowl) > 0) %>%
+  tail(10)
+```
+
+For seasonality effects, they can be adjust in total by using `seasonality.prior.scale` parameter, or individually by using the the `prior.scale` parameter with `add_seasonality()`.
+
+## Additional Regressors
+
+Additional regressors or independent variables can be added to the model using `add_regressor()`. A column with the new variable's value should be added in both the input dataframe `df` and the prediction dataframe `future`.
+
+The code below adds an additional column `nfl_sunday` to identify the effect of Sundays during the NFL season. The effect of this (and any other regressor) will show up in the **extra_regressors** plot. Note that the same regressor column should be present in the prediction dataframe.
+
+```{r}
+nfl_sunday <- function(ds) {
+  dates <- as.Date(ds)
+  month <- as.numeric(format(dates, '%m'))
+  as.numeric((weekdays(dates) == "Sunday") & (month > 8 | month < 2))
+}
+df$nfl_sunday <- nfl_sunday(df$ds)
+
+m <- prophet()
+m <- add_regressor(m, 'nfl_sunday')
+m <- fit.prophet(m, df)
+
+future$nfl_sunday <- nfl_sunday(future$ds)
+
+forecast <- predict(m, future)
+prophet_plot_components(m, forecast)
+```
+
+While the new column was binary, regressors do not have to be. The add_regressor() function can accept optional arguments like adjusting the prior scale like the other effects. The full list of parameters should be available in the help documentation. (`?add_regressor`)
+
+The coefficients of the regressors can be extracted using `prophet::regressor_coefficients`.
+
+# End Notes
+
+As the post is already long, I will stop here and cover the rest of the documentation in another post. So far, it appears that Prophet is a powerful forecasting package which offers a good amount of flexibility in terms of adjusting the parameters for trend and seasonality, but also to take into account other regressors.
