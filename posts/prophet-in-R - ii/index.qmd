@@ -1,0 +1,379 @@
+---
+title: "Forecasting with Prophet in R - Part II"
+author: "Derek Rodriguez"
+date: "2026-04-10"
+date-modified: "last-modified"
+categories: [R, Learn With Me, Forecasting]
+image: "https://facebook.github.io/prophet/static/wordmark.svg"
+execute: 
+  eval: true
+  echo: true
+  message: false
+  freeze: true
+---
+
+In this post, we continue learning about [Prophet](http://facebook.github.io/prophet/) by following the code in the documentation. Prophet is a procedure implemented in R or Python for forecasting time series data.
+
+My [previous post](https://datawithderek.netlify.app/posts/prophet-in-r/) covered the start of the documentation up to the section on **Seasonality, Holiday Effects, And Regressors**.
+
+# Loading R Packages
+
+We load the following packages into our environment using `p_load()` of the [**pacman**](https://cran.r-project.org/web/packages/pacman/index.html) package. We use pacman so that any packages that are not installed will be automatically installed. If all packages are already installed, then the code block is equivalent to a call of `library()` to load the packages.
+
+::: panel-tabset
+#### Package Descriptions
+
+The loaded packages include:
+
+-   **prophet -** package for importing, managing and processing vector-based geospatial data
+
+-   **tidyverse -** collection of packages for performing data importation, wrangling and visualization
+
+-   **plotly** - package for the creation of interactive data visualizations
+
+#### Package Installation and Loading
+
+```{r}
+pacman::p_load(prophet, tidyverse, plotly)
+```
+:::
+
+# Multiplicative Seasonality
+
+Prophet uses additive seasonality as a default– which means that the effect of a season is added onto the trend to arrive at a forecast. The example below, using data on the number of air passengers, shows a case where additive seasonality does not work:
+
+```{r}
+df <- read.csv('https://raw.githubusercontent.com/facebook/prophet/main/examples/example_air_passengers.csv')
+m <- prophet(df)
+future <- make_future_dataframe(m, 50, freq = 'm')
+forecast <- predict(m, future)
+plot(m, forecast)
+```
+
+Note that the dots show the actual historical data, while the line and bands show the forecast. We see that the seasonality is overstated in the beginning of the horizon, while it is understated in the latter part of the horizon. This means that the seasonality effect is clearly not a constant additive factor, and that it should be growing with the trend– which implies that it should be treated as multiplicative seasonality.
+
+In order to instruct Prophet to use multiplicative seasonality, we use the parameter `seasonality.mode = 'multiplicative'`.
+
+```{r}
+m <- prophet(df, seasonality.mode = 'multiplicative')
+forecast <- predict(m, future)
+plot(m, forecast)
+```
+
+Plotting the components will also show that the seasonality effects as a percentage of the trend.
+
+```{r}
+prophet_plot_components(m, forecast)
+```
+
+The parameter `seasonality.mode = 'multiplicative'` also applies to the holiday effects, other seasonalities and extra regressors. This behavior can be overridden by using the `mode` argument (with the value `'additive'` or `'multiplicative'`) when adding those elements. For example, the block below sets built-in seasonality to 'multiplicative', but includes added seasonality and extra regressor as 'additive'.
+
+```{r}
+m <- prophet(seasonality.mode = 'multiplicative')
+m <- add_seasonality(m, 'quarterly', period = 91.25, fourier.order = 8, mode = 'additive')
+m <- add_regressor(m, 'regressor', mode = 'additive')
+```
+
+# Uncertainty Intervals
+
+By default, Prophet includes uncertainty intervals in the forecast. These have several important assumptions behind them, and the uncertainty comes from three sources:
+
+1.  Uncertainty in the trend
+2.  Uncertainty in the seasonality estimates
+3.  Additional observation noise
+
+## Uncertainty in the Trend
+
+The biggest source of forecast uncertainty comes from the potential of future trend changes. We currently assume that the trend changes (with regards to their frequency and their magnitude) in our history will repeat in the future, but we will never know for sure. By computing for the distribution of the trend changes, we obtain the uncertainty interval for these.
+
+This assumption on the trend also means that allowing higher flexibility in the rate of change, i.e., by increasing `changepoint_prior_scale`, will increase the forecast uncertainty.
+
+The width of the uncertainty interval by default is set to 80%, but can be set using the parameter `interval.width`.
+
+```{r}
+m <- prophet(df, interval.width = 0.95)
+forecast <- predict(m, future)
+```
+
+## Uncertainty in the Seasonality
+
+By default, Prophet only returns uncertainty in the trend and observation noise. To also return uncertainty in seasonality, we need to do full Bayesian sampling using the parameter `mcmc.samples`.The code block below does it for the first six months of the Peyton Manning data from the beginning of the documentation.
+
+```{r}
+df <- read.csv('https://raw.githubusercontent.com/facebook/prophet/main/examples/example_wp_log_peyton_manning.csv')
+m <- prophet(df, mcmc.samples = 300)
+forecast <- predict(m, future)
+```
+
+This replaces the typical MAC estimation with MCMC sampling, and will take longer depending on how many observations there are. (i.e., the code now takes several minutes vs several seconds to fit the model)
+
+Once completed, we should also be able to see the uncertainty in the seasonal components when we plot them.
+
+```{r}
+prophet_plot_components(m, forecast)
+```
+
+# Outliers
+
+In Prophet, outliers can affect the forecast and/or the uncertainty estimate.
+
+The code below creates a forecast based on the log of the Wikipedia page visits to the R page, but includes a block of bad data.
+
+```{r}
+df <- read.csv('https://raw.githubusercontent.com/facebook/prophet/main/examples/example_wp_log_R_outliers1.csv')
+m <- prophet(df)
+future <- make_future_dataframe(m, periods = 1096)
+forecast <- predict(m, future)
+plot(m, forecast)
+```
+
+The forecast seasms reasonable, however, the uncertainty interval into the future becomes too wide. Prophet handledd the outlier in the history by fitting them with a trend change. The uncertainty modeled is based on an expectation that future trend changes will be of a similar magnitude.
+
+In this example, the best approach in handling the outliers is by removing them. Prophet is able to manage missing data. Their values should be set to NA in the history, but the dates should still be included in the future dataframe, which lets Prophet predict their values for those historical dates.
+
+```{r}
+outliers <- (as.Date(df$ds) > as.Date('2010-01-01')
+             & as.Date(df$ds) < as.Date('2011-01-01'))
+df$y[outliers] = NA
+m <- prophet(df)
+forecast <- predict(m, future)
+plot(m, forecast)
+```
+
+The example below illustrates the other case. Extreme outliers in June 2015 distort the seasonality estimate which affects the forward forecast.
+
+```{r}
+df <- read.csv('https://raw.githubusercontent.com/facebook/prophet/main/examples/example_wp_log_R_outliers2.csv')
+m <- prophet(df)
+future <- make_future_dataframe(m, periods = 1096)
+forecast <- predict(m, future)
+plot(m, forecast)
+```
+
+For these cases, the best approach is still to remove the outliers.
+
+```{r}
+outliers <- (as.Date(df$ds) > as.Date('2015-06-01')
+             & as.Date(df$ds) < as.Date('2015-06-30'))
+df$y[outliers] = NA
+m <- prophet(df)
+forecast <- predict(m, future)
+plot(m, forecast)
+```
+
+# Non-Daily Data
+
+## Sub-daily Data
+
+Prophet can also make sub-daily forecasts by passing a dataframe with timestamps in the `ds` column. The timestamps should be in the format "YYYY-MM-DD HH:MM:SS". When this is done, daily seasonality is automatically fit.
+
+The code below fits a Prophet model using data on the temperatures in Yosemite in 5 minute intervals.
+
+```{r}
+df <- read.csv('https://raw.githubusercontent.com/facebook/prophet/main/examples/example_yosemite_temps.csv')
+m <- prophet(df, changepoint.prior.scale=0.01)
+future <- make_future_dataframe(m, periods = 300, freq = 60 * 60)
+fcst <- predict(m, future)
+plot(m, fcst)
+```
+
+The components plot will show the daily seasonality:
+
+```{r}
+prophet_plot_components(m, fcst)
+```
+
+## Data with Regular Gaps
+
+Suppose the previous dataset only covered recordings between 12am and 6am:
+
+```{r}
+df2 <- df %>%
+  mutate(ds = as.POSIXct(ds, tz="GMT")) %>%
+  filter(as.numeric(format(ds, "%H")) < 6)
+m <- prophet(df2)
+future <- make_future_dataframe(m, periods = 300, freq = 60 * 60)
+fcst <- predict(m, future)
+plot(m, fcst)
+```
+
+The forecast appears poor and the future shows very large fluctuations than what actually happened in the past. This is due to the fact that the model includes daily cycles, but we only have data for part of the day, leading to unconstrained seasonality for the 3/4 of the day. To address this, we need to only make predictions for the times where we have the historical data for.
+
+```{r}
+future2 <- future %>% 
+  filter(as.numeric(format(ds, "%H")) < 6)
+fcst <- predict(m, future2)
+plot(m, fcst)
+```
+
+This also applies to other datasets or timeframes– for example, in cases where we only have data for weekdays and not weekends.
+
+## Monthly Data
+
+Prophet can be used to model monthly data, but the underlying model is still continuous time. This means that we can get strange results if we try to get daily forecasts from such models.
+
+In the code below, we use Prophet to forecast US retail sales volume for the next 10 years:
+
+```{r}
+df <- read.csv('https://raw.githubusercontent.com/facebook/prophet/main/examples/example_retail_sales.csv')
+m <- prophet(df, seasonality.mode = 'multiplicative')
+future <- make_future_dataframe(m, periods = 3652)
+fcst <- predict(m, future)
+plot(m, fcst)
+```
+
+This approach has the same issue as the previous section– we only have historical data in the beginning of each month. To solve this, we only need to make predictions for monthly data. This is done by passing the frequency into the parameter `make_future_dataframe`:
+
+```{r}
+future <- make_future_dataframe(m, periods = 120, freq = 'month')
+fcst <- predict(m, future)
+plot(m, fcst)
+```
+
+When modeling monthly data, yearly seasonality can also be modeled using binary regressors: for example `is_jan`, `is_feb`, etc. When using such regressors, please note that we should set `yearly_seasonality=False`
+
+# Diagnostics
+
+## Cross Validation
+
+Prophet is able to cross validate by measuring the forecast error using historical data. This is done by selecting points in the history and only computing for the forecast up to that point, and comparing them against the actuals.
+
+The cross-validation procedure can be done automatically for a range of cutoff points using the `cross_validation` function. A forecast will for every point between every `cutoff` and `cutoff + horizon`. The resulting dataframe will then be used to compare the forecasted and the actual value.
+
+The code below uses the Peyton Manning data used in the first section of the documentation, and does cross-validation to to measure performance over a horizon of 365 days, starting after 730 days of historical training data, and then making a prediction every 18- days.
+
+```{r}
+df <- read.csv('https://raw.githubusercontent.com/facebook/prophet/main/examples/example_wp_log_peyton_manning.csv')
+future <- make_future_dataframe(m, periods = 365)
+m <- prophet(df)
+
+df.cv <- cross_validation(m, initial = 730, period = 180, horizon = 365, units = 'days')
+head(df.cv)
+```
+
+Custom cutoffs can also be supplied as a list of dates to the `cutoffs` parameter:
+
+```{r}
+cutoffs <- as.Date(c('2013-02-15', '2013-08-15', '2014-02-15'))
+df.cv2 <- cross_validation(m, cutoffs = cutoffs, horizon = 365, units = 'days')
+```
+
+The `performance_metrics` function can be used to provide useful statistics for the prediction performance as a function of the distance from the cutoff. The key statistics computed are mean squared error (MSE), root mean square error (RMSE), mean absolute error (MAE), mean absolute percent error (MAPE), median absolute error (MDAPE), and coverage of the lower and upper interval estimates. These measures are computed on a rolling window of the predictions in the cross validation output. By default, 10% of the predictions are included in each window, but this behavior can be changed with the `rolling_window` argument.
+
+```{r}
+df.p <- performance_metrics(df.cv)
+head(df.p)
+```
+
+Performance measures can be visualized with `plot_cross_validation_metric`. The code below creates the plot for MAPE. The x-axis gives the rolling window, while dots show the absolute percent error for each prediction, while the blue line is the MAPE.
+
+```{r}
+plot_cross_validation_metric(df.cv, metric = 'mape')
+```
+
+## Hyperparameter Tuning
+
+Cross validation can be used for hyperparameter tuning of the model. The online documentation provides an implementation for Python, but with the help of ChatGPT / Copilot, we have the same for R below. The code iterates across combination of `changepoint_prior_scale` and `seasonality_prior_scale` and captures their performace with regards to RMSE.
+
+```{r}
+library(purrr)
+
+# Define parameter grid
+param_grid <- expand.grid(
+  changepoint_prior_scale = c(0.001, 0.01, 0.1, 0.5),
+  seasonality_prior_scale = c(0.01, 0.1, 1.0, 10.0)
+)
+
+# Function to evaluate a single parameter combination
+evaluate_params <- function(params, df, cutoffs) {
+  m <- prophet(
+    df,
+    changepoint.prior.scale = params$changepoint_prior_scale,
+    seasonality.prior.scale = params$seasonality_prior_scale
+  )
+  
+  df_cv <- cross_validation(
+    m,
+    cutoffs = cutoffs,
+    horizon = 30,      # 30 days
+    units = "days"
+  )
+  
+  df_perf <- performance_metrics(df_cv, rolling_window = 1)
+  
+  return(df_perf$rmse[1])
+}
+
+# Run tuning
+rmses <- map_dbl(
+  seq_len(nrow(param_grid)),
+  ~ evaluate_params(param_grid[.x, ], df, cutoffs)
+)
+
+# Combine results
+tuning_results <- param_grid %>%
+  mutate(rmse = rmses)
+
+print(tuning_results)
+```
+
+Aside from the two hyperparameters above, others that can be explored for tuning are:
+
+-   `holidays_prior_scale`
+
+-   `seasonality_mode` - as discussed in the earlier section of this post, the possible values are: `additive`(default), and `multiplicative`
+
+# Handling Shocks
+
+The documentation includes a case study covering a demand shock coming from the COVID-19 pandemic. I will not cover the case here, but the reader can just refer to the [detailed documentation](https://facebook.github.io/prophet/docs/handling_shocks.html).
+
+# Additional Topics
+
+## Saving Models
+
+Prophet models can be saved in R using saveRDS and can be reloaded using readRDS.
+
+```{r}
+saveRDS(m, file="model.RDS")  # Save model
+m <- readRDS(file="model.RDS")  # Load model
+```
+
+## Flat Trend
+
+We may want to force a flat trend when time series exhibit strong seasonality patterns or when we want to rely on other regressors. This can be done by passing the argument `growth='flat'` when building the model.
+
+```{r}
+m <- prophet(df, growth='flat')
+```
+
+## Custom Trends
+
+There are three built-in trends in Prophet:
+
+1.  piecewise linear
+2.  piecewise logistic growth
+3.  flat
+
+To use another trend, one can download the source code from github and modify the trend function as a local branch. (and then install that local version)
+
+## Updating Fitted Models
+
+Prophet models can only be fit once, and a new model needs to be rebuilt when new data comes in. In most cases, this is not an issue as the recreation of the model is fast enough. It is, however, possible to speed up the recreation of the model by warm-starting the fit from the model parameters of the last one.
+
+# End Notes
+
+I will end my code-along of the Prophet documentation here. There are some sections skipped which are mainly features from their latest versions.
+
+The documentation ended by a note that the team will not be making any more changes to the current codebase but recommended a few references for some state-of-the-art forecasting packages like:
+
+-   Packages from the Nixtla group
+
+    -   [statsforecast](https://github.com/Nixtla/statsforecast)
+
+    -   [hierarchicalforecast](https://github.com/Nixtla/hierarchicalforecast)
+
+    -   [neuralforecast](https://github.com/Nixtla/neuralforecast)
+
+-   [NeuralProphet](https://neuralprophet.com/) - Prophet-style implementation in PyTorch
+
+I might look into these and cover these in a future post to learn more about the available forecasting techniques or packages out there.
